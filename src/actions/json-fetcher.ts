@@ -12,9 +12,8 @@ import { ProgressBarRenderer } from "../ui/progress-bar-renderer";
 import { FetchCache } from "../services/fetch-cache";
 
 interface CachedValue {
-    raw: unknown;
+    value: string;
     isError: boolean;
-    error?: string;
 }
 
 @action({ UUID: "com.len.fetcher.action" })
@@ -145,22 +144,23 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
             }
         }
 
-        const result = await this.cache.get(settings.url, headers, maxAgeMs);
+        const result = await this.cache.get(
+            { url: settings.url, method: settings.method, headers, body: settings.body },
+            maxAgeMs
+        );
 
         if (result.error) {
             streamDeck.logger.error(`Fetch failed for ${settings.url}: ${result.error}`);
-            this.values.set(ev.action.id, { raw: undefined, isError: true, error: result.error });
+            this.values.set(ev.action.id, { value: result.error, isError: true });
             await this.paint(ev, settings);
             return;
         }
 
         try {
-            const rawVal = settings.mode === "html"
-                ? this.extractHtml(result.text || "", settings.selector || "")
-                : this.extractJson(result.text || "", settings.jsonPath || "");
-            this.values.set(ev.action.id, { raw: rawVal, isError: false });
+            const display = this.buildDisplay(result.text || "", settings);
+            this.values.set(ev.action.id, { value: display, isError: false });
         } catch (err: any) {
-            this.values.set(ev.action.id, { raw: undefined, isError: true, error: err?.message || "Parse error" });
+            this.values.set(ev.action.id, { value: err?.message || "Parse error", isError: true });
         }
         await this.paint(ev, settings);
     }
@@ -177,34 +177,58 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
             return;
         }
 
-        if (cached.isError) {
-            await this.draw(ev, cached.error || "Error", label, true, icon, themeColor);
-            return;
-        }
-
-        const displayValue = this.formatValue(cached.raw, settings.formatter || "none");
-        await this.draw(ev, displayValue, label, false, icon, themeColor);
+        await this.draw(ev, cached.value, label, cached.isError, icon, themeColor);
     }
 
     private deriveLabel(settings: FetcherSettings): string {
         return settings.label ? settings.label : "";
     }
 
-    private extractJson(text: string, path: string): unknown {
-        let data: unknown;
+    private buildDisplay(text: string, settings: FetcherSettings): string {
+        const isHtml = settings.mode === "html";
+        const expr = (isHtml ? settings.selector : settings.jsonPath) || "";
+        const formatter = settings.formatter || "none";
+
+        if (/\{[^}]*\}/.test(expr)) {
+            const context = isHtml ? parse(text) : this.parseJson(text);
+            return expr.replace(/\{([^}]*)\}/g, (_match, inner) => {
+                const key = String(inner).trim();
+                const raw = isHtml ? this.queryHtml(context, key) : this.resolvePath(context, key);
+                return this.formatValue(raw, formatter);
+            });
+        }
+
+        const raw = isHtml ? this.extractHtml(text, expr) : this.extractJson(text, expr);
+        return this.formatValue(raw, formatter);
+    }
+
+    private parseJson(text: string): unknown {
         try {
-            data = JSON.parse(text);
+            return JSON.parse(text);
         } catch {
             throw new Error("Invalid JSON");
         }
-        return this.resolvePath(data, path);
+    }
+
+    private extractJson(text: string, path: string): unknown {
+        return this.resolvePath(this.parseJson(text), path);
     }
 
     private extractHtml(text: string, selector: string): unknown {
         if (!selector) {
             throw new Error("No selector");
         }
+        const value = this.queryHtml(parse(text), selector);
+        if (value === null) {
+            throw new Error("No match");
+        }
+        return value;
+    }
 
+    private queryHtml(root: any, selector: string): unknown {
+        if (!selector) {
+            return null;
+        }
         let attribute = "";
         let query = selector;
         const at = selector.lastIndexOf("@");
@@ -212,11 +236,9 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
             query = selector.slice(0, at).trim();
             attribute = selector.slice(at + 1).trim();
         }
-
-        const root = parse(text);
         const el = root.querySelector(query);
         if (!el) {
-            throw new Error("No match");
+            return null;
         }
         const value = attribute ? el.getAttribute(attribute) : el.text;
         return value === undefined || value === null ? null : value.trim();

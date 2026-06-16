@@ -206,13 +206,13 @@
             <div class="field" id="field-jsonPath">
                 <label for="jsonPath">JSON Path</label>
                 <input id="jsonPath" type="text" placeholder="data.value" />
-                <div class="hint">Dot/bracket path, e.g. <code>data.items[0].value</code>. Leave empty for a bare value.</div>
+                <div class="hint">Dot/bracket path, e.g. <code>data.items[0].value</code>. Combine paths with <code>{...}</code>, e.g. <code>{data.used}/{data.total}</code>.</div>
             </div>
 
             <div class="field hidden" id="field-selector">
                 <label for="selector">CSS Selector</label>
                 <input id="selector" type="text" placeholder=".price" />
-                <div class="hint">First match's text. Read an attribute with <code>selector@attr</code>, e.g. <code>meta[name=price]@content</code></div>
+                <div class="hint">First match's text. Read an attribute with <code>selector@attr</code>. Combine selectors with <code>{...}</code>, e.g. <code>{.used}/{.total}</code>.</div>
             </div>
         </div>
 
@@ -299,6 +299,23 @@
         </div>
 
         <div class="panel" id="panel-advanced">
+            <div class="field">
+                <label for="method">Method</label>
+                <select id="method">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+
+            <div class="field hidden" id="field-body">
+                <label for="body">Request Body</label>
+                <textarea id="body" rows="3" placeholder='{"query": "..."}'></textarea>
+                <div class="hint">Sent with non-GET requests. Defaults to <code>Content-Type: application/json</code> unless set in Headers.</div>
+            </div>
+
             <div class="field">
                 <label for="headers">Headers</label>
                 <textarea id="headers" rows="3" placeholder='{"Authorization": "Bearer token"}'></textarea>
@@ -400,13 +417,20 @@
             $("selector").value = settings.selector || "";
             $("label").value = settings.label || "";
             $("headers").value = settings.headers || "";
+            $("body").value = settings.body || "";
+            $("method").value = settings.method || "GET";
             $("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
             $("formatter").value = settings.formatter || "none";
             $("icon").value = settings.icon || "none";
             setTheme(settings.themeColor || "cyan", false);
             setMode(settings.mode === "html" ? "html" : "json", false);
+            updateBodyVisibility();
             validate();
             updateIntervalHint();
+        }
+
+        function updateBodyVisibility() {
+            $("field-body").classList.toggle("hidden", $("method").value === "GET");
         }
 
         function setMode(mode, save) {
@@ -488,6 +512,8 @@
             settings.selector = $("selector").value.trim();
             settings.label = $("label").value.trim();
             settings.headers = $("headers").value.trim();
+            settings.method = $("method").value;
+            settings.body = $("body").value.trim();
 
             const pullingVal = parseInt($("pulling").value, 10);
             settings.pulling = !isNaN(pullingVal) ? pullingVal : 43200;
@@ -518,8 +544,9 @@
                 $(id).addEventListener("input", validate);
             });
             $("pulling").addEventListener("input", updateIntervalHint);
+            $("method").addEventListener("change", function () { updateBodyVisibility(); saveSettings(); });
 
-            ["url", "jsonPath", "selector", "label", "headers", "pulling", "formatter", "icon"].forEach(function (id) {
+            ["url", "jsonPath", "selector", "label", "headers", "body", "pulling", "formatter", "icon"].forEach(function (id) {
                 $(id).addEventListener("change", saveSettings);
             });
 

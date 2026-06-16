@@ -2,6 +2,13 @@ const TIMEOUT_MS = 8000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 200;
 
+export interface FetchRequest {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+}
+
 export interface FetchResult {
     text?: string;
     error?: string;
@@ -18,12 +25,8 @@ interface CacheEntry {
 export class FetchCache {
     private readonly store = new Map<string, CacheEntry>();
 
-    async get(
-        url: string,
-        headers: Record<string, string> | undefined,
-        maxAgeMs: number
-    ): Promise<FetchResult> {
-        const key = this.keyFor(url, headers);
+    async get(req: FetchRequest, maxAgeMs: number): Promise<FetchResult> {
+        const key = this.keyFor(req);
         const now = Date.now();
         const entry = this.store.get(key);
 
@@ -35,7 +38,7 @@ export class FetchCache {
             return { text: entry.text, error: entry.error, fromCache: true };
         }
 
-        const inflight = this.doFetch(url, headers);
+        const inflight = this.doFetch(req);
         this.store.set(key, {
             timestamp: entry?.timestamp ?? 0,
             text: entry?.text,
@@ -56,19 +59,27 @@ export class FetchCache {
         }
     }
 
-    private async doFetch(
-        url: string,
-        headers: Record<string, string> | undefined
-    ): Promise<FetchResult> {
+    private async doFetch(req: FetchRequest): Promise<FetchResult> {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
         try {
-            const init: RequestInit = { signal: controller.signal, redirect: "follow" };
-            if (headers) {
+            const method = (req.method || "GET").toUpperCase();
+            const headers: Record<string, string> = { ...(req.headers || {}) };
+            const init: RequestInit = { signal: controller.signal, redirect: "follow", method };
+
+            const hasBody = req.body != null && req.body !== "" && method !== "GET" && method !== "HEAD";
+            if (hasBody) {
+                init.body = req.body;
+                const hasContentType = Object.keys(headers).some((k) => k.toLowerCase() === "content-type");
+                if (!hasContentType) {
+                    headers["Content-Type"] = "application/json";
+                }
+            }
+            if (Object.keys(headers).length > 0) {
                 init.headers = headers;
             }
 
-            const res = await fetch(url, init);
+            const res = await fetch(req.url, init);
             if (!res.ok) {
                 return { error: `HTTP ${res.status}`, fromCache: false };
             }
@@ -95,8 +106,13 @@ export class FetchCache {
         }
     }
 
-    private keyFor(url: string, headers: Record<string, string> | undefined): string {
-        return headers ? `${url}\n${JSON.stringify(headers)}` : url;
+    private keyFor(req: FetchRequest): string {
+        return JSON.stringify([
+            req.url,
+            (req.method || "GET").toUpperCase(),
+            req.headers || null,
+            req.body || null,
+        ]);
     }
 
     private prune(): void {

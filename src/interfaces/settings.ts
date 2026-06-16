@@ -1,5 +1,7 @@
 export interface FetcherSettings {
     url?: string;
+    method?: string;
+    body?: string;
     mode?: string;
     jsonPath?: string;
     selector?: string;
