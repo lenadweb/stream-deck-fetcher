@@ -1,6 +1,8 @@
 export interface FetcherSettings {
     url?: string;
+    mode?: string;
     jsonPath?: string;
+    selector?: string;
     label?: string;
     icon?: string;
     themeColor?: string;

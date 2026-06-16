@@ -6,6 +6,7 @@ import streamDeck, {
     WillDisappearEvent,
     DidReceiveSettingsEvent,
 } from "@elgato/streamdeck";
+import { parse } from "node-html-parser";
 import { FetcherSettings } from "../interfaces/settings";
 import { ProgressBarRenderer } from "../ui/progress-bar-renderer";
 import { FetchCache } from "../services/fetch-cache";
@@ -153,10 +154,53 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
             return;
         }
 
-        const rawVal = this.resolvePath(result.data, settings.jsonPath || "");
+        let rawVal: unknown;
+        try {
+            rawVal = settings.mode === "html"
+                ? this.extractHtml(result.text || "", settings.selector || "")
+                : this.extractJson(result.text || "", settings.jsonPath || "");
+        } catch (err: any) {
+            const msg = err?.message || "Parse error";
+            this.lastResults.set(ev.action.id, { value: msg, isError: true, label, icon });
+            await this.draw(ev, msg, label, true, icon);
+            return;
+        }
+
         const displayValue = this.formatValue(rawVal, settings.formatter || "none");
         this.lastResults.set(ev.action.id, { value: displayValue, isError: false, label, icon });
         await this.draw(ev, displayValue, label, false, icon);
+    }
+
+    private extractJson(text: string, path: string): unknown {
+        let data: unknown;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("Invalid JSON");
+        }
+        return this.resolvePath(data, path);
+    }
+
+    private extractHtml(text: string, selector: string): unknown {
+        if (!selector) {
+            throw new Error("No selector");
+        }
+
+        let attribute = "";
+        let query = selector;
+        const at = selector.lastIndexOf("@");
+        if (at > 0) {
+            query = selector.slice(0, at).trim();
+            attribute = selector.slice(at + 1).trim();
+        }
+
+        const root = parse(text);
+        const el = root.querySelector(query);
+        if (!el) {
+            throw new Error("No match");
+        }
+        const value = attribute ? el.getAttribute(attribute) : el.text;
+        return value === undefined || value === null ? null : value.trim();
     }
 
     private async redraw(ev: any): Promise<void> {
