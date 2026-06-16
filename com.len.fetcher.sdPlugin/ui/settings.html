@@ -230,7 +230,7 @@
 <body>
     <div class="container">
         <div class="preview">
-            <div class="tile">
+            <div class="tile" id="pv-tile">
                 <div class="tile-label" id="pv-label">FETCHER</div>
                 <div class="tile-row">
                     <div class="tile-dot" id="pv-dot"></div>
@@ -351,7 +351,7 @@
             <div class="field">
                 <label>Theme Color</label>
                 <div class="swatches" id="swatches"></div>
-                <div class="hint">Tints the icon on the key.</div>
+                <div class="hint">Colors the value text, icon and background.</div>
             </div>
         </div>
 
@@ -403,6 +403,15 @@
         let currentTheme = "cyan";
 
         function $(id) { return document.getElementById(id); }
+
+        function darken(hex, factor) {
+            const h = hex.replace("#", "");
+            const ch = function (i) {
+                const v = Math.round(parseInt(h.slice(i, i + 2), 16) * factor);
+                return Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0");
+            };
+            return "#" + ch(0) + ch(2) + ch(4);
+        }
 
         function connectElgatoStreamDeckSocket(port, uuidValue, registerEvent, info, actionInfo) {
             uuid = uuidValue;
@@ -513,12 +522,14 @@
         }
 
         function updatePreview() {
+            const c = THEMES[currentTheme] || THEMES.cyan;
             $("pv-label").textContent = deriveLabel().toUpperCase();
             $("pv-value").textContent = formatSample($("formatter").value);
+            $("pv-value").style.color = c[0];
+            $("pv-tile").style.background = "linear-gradient(135deg, " + darken(c[0], 0.16) + " 0%, " + darken(c[1], 0.1) + " 100%)";
             const icon = $("icon").value;
             const dot = $("pv-dot");
             if (icon && icon !== "none") {
-                const c = THEMES[currentTheme] || THEMES.cyan;
                 dot.style.background = "linear-gradient(135deg, " + c[0] + ", " + c[1] + ")";
                 dot.style.display = "block";
             } else {

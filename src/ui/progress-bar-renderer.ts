@@ -128,7 +128,7 @@ export class ProgressBarRenderer {
 
     private renderKey(value: string, label: string, isError: boolean, icon: string, themeColor: string): string {
         const colors = themeGradients[themeColor] || themeGradients.cyan;
-        const bgGrad = `<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#090514" /><stop offset="100%" stop-color="#140f28" /></linearGradient>`;
+        const bgGrad = this.bgGradient(colors);
         const neonGrad = isError
             ? `<linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ef4444" /><stop offset="100%" stop-color="#f43f5e" /></linearGradient>`
             : `<linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${colors.start}" /><stop offset="100%" stop-color="${colors.stop}" /></linearGradient>`;
@@ -144,6 +144,7 @@ export class ProgressBarRenderer {
         const maxFontSize = 32;
         const fontSize = Math.max(12, Math.min(maxFontSize, Math.floor(textLimit / (value.length * 0.55 || 1))));
         const escapedValue = this.escape(value);
+        const valueColor = isError ? "#ef4444" : colors.start;
         
         if (hasIcon) {
             const iconSize = 24;
@@ -159,17 +160,17 @@ export class ProgressBarRenderer {
             
             const textX = startX + iconSize + gap;
             const textY = 82 + fontSize * 0.35;
-            elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff" text-anchor="start">${escapedValue}</text>`;
+            elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="start">${escapedValue}</text>`;
         } else {
             const textY = 82 + fontSize * 0.35;
-            elements += `<text x="72" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${isError ? '#ef4444' : '#ffffff'}" text-anchor="middle">${escapedValue}</text>`;
+            elements += `<text x="72" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="middle">${escapedValue}</text>`;
         }
         return elements;
     }
 
     private renderDial(value: string, label: string, isError: boolean, icon: string, themeColor: string): string {
         const colors = themeGradients[themeColor] || themeGradients.cyan;
-        const bgGrad = `<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#090514" /><stop offset="100%" stop-color="#140f28" /></linearGradient>`;
+        const bgGrad = this.bgGradient(colors);
         const neonGrad = isError
             ? `<linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ef4444" /><stop offset="100%" stop-color="#f43f5e" /></linearGradient>`
             : `<linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${colors.start}" /><stop offset="100%" stop-color="${colors.stop}" /></linearGradient>`;
@@ -185,6 +186,7 @@ export class ProgressBarRenderer {
         const maxFontSize = 38;
         const fontSize = Math.max(14, Math.min(maxFontSize, Math.floor(textLimit / (value.length * 0.55 || 1))));
         const escapedValue = this.escape(value);
+        const valueColor = isError ? "#ef4444" : colors.start;
         
         if (hasIcon) {
             const iconSize = 30;
@@ -200,10 +202,10 @@ export class ProgressBarRenderer {
             
             const textX = startX + iconSize + gap;
             const textY = 64 + fontSize * 0.35;
-            elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff" text-anchor="start">${escapedValue}</text>`;
+            elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="start">${escapedValue}</text>`;
         } else {
             const textY = 64 + fontSize * 0.35;
-            elements += `<text x="100" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${isError ? '#ef4444' : '#ffffff'}" text-anchor="middle">${escapedValue}</text>`;
+            elements += `<text x="100" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="middle">${escapedValue}</text>`;
         }
         return elements;
     }
@@ -231,5 +233,20 @@ export class ProgressBarRenderer {
 
     private round(n: number): number {
         return Math.round(n * 100) / 100;
+    }
+
+    private bgGradient(colors: { start: string; stop: string }): string {
+        const start = this.darken(colors.start, 0.16);
+        const stop = this.darken(colors.stop, 0.1);
+        return `<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${start}" /><stop offset="100%" stop-color="${stop}" /></linearGradient>`;
+    }
+
+    private darken(hex: string, factor: number): string {
+        const h = hex.replace("#", "");
+        const ch = (i: number) => {
+            const v = Math.round(parseInt(h.slice(i, i + 2), 16) * factor);
+            return Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0");
+        };
+        return `#${ch(0)}${ch(2)}${ch(4)}`;
     }
 }
