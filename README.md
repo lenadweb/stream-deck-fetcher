@@ -43,6 +43,10 @@ The Property Inspector is organised into three tabs:
 | **Headers** | Optional JSON object of request headers, e.g. `{"Authorization": "Bearer token"}`. |
 | **Refresh Interval** | Polling interval in seconds (minimum 5, default 43200 = 12 hours). |
 
+## Examples
+
+See [EXAMPLES.md](EXAMPLES.md) for 40+ ready-to-use recipes — GitHub stars, crypto prices, npm/Docker stats, weather, service status, homelab metrics, and more.
+
 ## Development
 
 ```bash
