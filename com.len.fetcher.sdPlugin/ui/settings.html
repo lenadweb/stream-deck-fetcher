@@ -4,155 +4,272 @@
 <head lang="en">
     <title>Fetcher Settings</title>
     <meta charset="utf-8" />
-    <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #2d2d2d;
-            color: #d8d8d8;
+        :root {
+            --bg: #2d2d2d;
+            --panel: #1a1a1a;
+            --border: #3a3a3a;
+            --border-strong: #555;
+            --text: #d8d8d8;
+            --muted: #8a8a8a;
+            --accent: #06b6d4;
         }
-        .container {
-            padding: 8px;
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+        }
+        .container { padding: 10px 12px 14px; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab {
+            flex: 1;
+            padding: 8px 4px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color .15s, border-color .15s;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active {
+            color: #fff;
+            border-bottom-color: var(--accent);
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .field { margin-bottom: 12px; }
+        .field > label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .3px;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .field .hint {
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+        .field .hint code {
+            background: #000;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            background-color: var(--panel);
+            color: #fff;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
         }
         textarea {
-            width: 100%;
-            box-sizing: border-box;
-            background-color: #1a1a1a;
-            color: #fff;
-            border: 1px solid #555;
-            padding: 4px;
-            border-radius: 4px;
             font-family: monospace;
             resize: vertical;
+            min-height: 56px;
         }
-        select {
-            width: 100%;
-            height: 30px;
-            background-color: #1a1a1a;
-            color: #fff;
-            border: 1px solid #555;
+        select { height: 32px; }
+
+        .segmented {
+            display: flex;
+            border: 1px solid var(--border-strong);
             border-radius: 4px;
-            padding: 4px;
+            overflow: hidden;
         }
+        .segmented button {
+            flex: 1;
+            padding: 7px 4px;
+            background: var(--panel);
+            border: none;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .segmented button + button { border-left: 1px solid var(--border-strong); }
+        .segmented button.active {
+            background: var(--accent);
+            color: #06222a;
+        }
+
         .footer {
             margin-top: 14px;
             padding-top: 10px;
-            border-top: 1px solid #3a3a3a;
+            border-top: 1px solid var(--border);
             text-align: center;
             font-size: 11px;
         }
-        .footer a {
-            color: #06b6d4;
-            text-decoration: none;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .hidden { display: none !important; }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <sdpi-item label="URL">
-            <sdpi-textfield id="url" placeholder="https://api.example.com/data"></sdpi-textfield>
-        </sdpi-item>
+        <div class="tabs">
+            <button class="tab active" data-tab="data">Data</button>
+            <button class="tab" data-tab="display">Display</button>
+            <button class="tab" data-tab="advanced">Advanced</button>
+        </div>
 
-        <sdpi-item label="Headers">
-            <textarea id="headers" rows="3" placeholder='{"Authorization": "Bearer token"}'></textarea>
-        </sdpi-item>
+        <div class="panel active" id="panel-data">
+            <div class="field">
+                <label for="url">URL</label>
+                <input id="url" type="text" placeholder="https://api.example.com/data" />
+            </div>
 
-        <sdpi-item label="JSON Path">
-            <sdpi-textfield id="jsonPath" placeholder="data.value"></sdpi-textfield>
-        </sdpi-item>
+            <div class="field">
+                <label>Source Type</label>
+                <div class="segmented" id="mode">
+                    <button type="button" data-mode="json">JSON</button>
+                    <button type="button" data-mode="html">HTML</button>
+                </div>
+            </div>
 
-        <sdpi-item label="Label">
-            <sdpi-textfield id="label" placeholder="My Metric"></sdpi-textfield>
-        </sdpi-item>
+            <div class="field" id="field-jsonPath">
+                <label for="jsonPath">JSON Path</label>
+                <input id="jsonPath" type="text" placeholder="data.value" />
+                <div class="hint">Dot/bracket path, e.g. <code>data.items[0].value</code></div>
+            </div>
 
-        <sdpi-item label="Interval (s)">
-            <sdpi-textfield id="pulling" type="number" placeholder="43200"></sdpi-textfield>
-        </sdpi-item>
+            <div class="field hidden" id="field-selector">
+                <label for="selector">CSS Selector</label>
+                <input id="selector" type="text" placeholder=".price" />
+                <div class="hint">First match's text. Read an attribute with <code>selector@attr</code>, e.g. <code>meta[name=price]@content</code></div>
+            </div>
+        </div>
 
-        <sdpi-item label="Theme Color">
-            <select id="themeColor">
-                <option value="cyan">Cyan</option>
-                <option value="purple">Purple</option>
-                <option value="green">Green</option>
-                <option value="red">Red</option>
-                <option value="orange">Orange</option>
-                <option value="pink">Pink</option>
-                <option value="blue">Blue</option>
-                <option value="yellow">Yellow</option>
-                <option value="gray">Gray</option>
-                <option value="white">White</option>
-            </select>
-        </sdpi-item>
+        <div class="panel" id="panel-display">
+            <div class="field">
+                <label for="label">Label</label>
+                <input id="label" type="text" placeholder="My Metric" />
+                <div class="hint">Leave empty to use the URL hostname.</div>
+            </div>
 
-        <sdpi-item label="Format">
-            <select id="formatter">
-                <option value="none">As Is (e.g. 12.34)</option>
-                <option value="integer">Round to Integer (e.g. 12)</option>
-                <option value="percent">Percentage (e.g. 85%)</option>
-                <option value="currency">Currency USD (e.g. $12.50)</option>
-                <option value="currency_eur">Currency EUR (e.g. 12.50 €)</option>
-                <option value="abbreviate">Abbreviate (e.g. 12.5k / 2.5M)</option>
-                <option value="boolean_status">On / Off (Boolean status)</option>
-                <option value="uppercase">UPPERCASE (e.g. OK)</option>
-                <option value="lowercase">lowercase (e.g. ok)</option>
-            </select>
-        </sdpi-item>
+            <div class="field">
+                <label for="formatter">Format</label>
+                <select id="formatter">
+                    <option value="none">As Is (e.g. 12.34)</option>
+                    <option value="integer">Round to Integer (e.g. 12)</option>
+                    <option value="percent">Percentage (e.g. 85%)</option>
+                    <option value="currency">Currency USD (e.g. $12.50)</option>
+                    <option value="currency_eur">Currency EUR (e.g. 12.50 €)</option>
+                    <option value="abbreviate">Abbreviate (e.g. 12.5k / 2.5M)</option>
+                    <option value="boolean_status">On / Off (Boolean status)</option>
+                    <option value="uppercase">UPPERCASE (e.g. OK)</option>
+                    <option value="lowercase">lowercase (e.g. ok)</option>
+                </select>
+            </div>
 
-        <sdpi-item label="Icon">
-            <select id="icon">
-                <option value="none">None</option>
-                <option value="server">Server</option>
-                <option value="database">Database</option>
-                <option value="cloud">Cloud</option>
-                <option value="cpu">CPU</option>
-                <option value="hardDrive">Hard Drive</option>
-                <option value="globe">Globe</option>
-                <option value="activity">Activity</option>
-                <option value="bell">Alert / Bell</option>
-                <option value="check">Checkmark</option>
-                <option value="alert">Warning</option>
-                <option value="clock">Clock</option>
-                <option value="dollar">Dollar</option>
-                <option value="euro">Euro</option>
-                <option value="percent">Percent</option>
-                <option value="user">User</option>
-                <option value="heart">Heart</option>
-                <option value="star">Star</option>
-                <option value="eye">Eye</option>
-                <option value="lock">Lock</option>
-                <option value="key">Key</option>
-                <option value="settings">Settings</option>
-                <option value="wifi">WiFi</option>
-                <option value="rotateCw">Sync</option>
-                <option value="terminal">Terminal</option>
-                <option value="code">Code</option>
-                <option value="info">Info</option>
-                <option value="help">Help</option>
-                <option value="search">Search</option>
-                <option value="play">Play</option>
-                <option value="pause">Pause</option>
-                <option value="square">Stop</option>
-                <option value="shield">Shield</option>
-                <option value="thermometer">Thermometer</option>
-                <option value="sun">Sun</option>
-                <option value="moon">Moon</option>
-                <option value="trendingUp">Trending Up</option>
-                <option value="trendingDown">Trending Down</option>
-                <option value="download">Download</option>
-                <option value="upload">Upload</option>
-                <option value="mail">Mail</option>
-                <option value="phone">Phone</option>
-                <option value="mapPin">Map Pin</option>
-                <option value="volume">Volume</option>
-                <option value="battery">Battery</option>
-                <option value="trash">Trash</option>
-                <option value="edit">Edit</option>
-            </select>
-        </sdpi-item>
+            <div class="field">
+                <label for="icon">Icon</label>
+                <select id="icon">
+                    <option value="none">None</option>
+                    <option value="server">Server</option>
+                    <option value="database">Database</option>
+                    <option value="cloud">Cloud</option>
+                    <option value="cpu">CPU</option>
+                    <option value="hardDrive">Hard Drive</option>
+                    <option value="globe">Globe</option>
+                    <option value="activity">Activity</option>
+                    <option value="bell">Alert / Bell</option>
+                    <option value="check">Checkmark</option>
+                    <option value="alert">Warning</option>
+                    <option value="clock">Clock</option>
+                    <option value="dollar">Dollar</option>
+                    <option value="euro">Euro</option>
+                    <option value="percent">Percent</option>
+                    <option value="user">User</option>
+                    <option value="heart">Heart</option>
+                    <option value="star">Star</option>
+                    <option value="eye">Eye</option>
+                    <option value="lock">Lock</option>
+                    <option value="key">Key</option>
+                    <option value="settings">Settings</option>
+                    <option value="wifi">WiFi</option>
+                    <option value="rotateCw">Sync</option>
+                    <option value="terminal">Terminal</option>
+                    <option value="code">Code</option>
+                    <option value="info">Info</option>
+                    <option value="help">Help</option>
+                    <option value="search">Search</option>
+                    <option value="play">Play</option>
+                    <option value="pause">Pause</option>
+                    <option value="square">Stop</option>
+                    <option value="shield">Shield</option>
+                    <option value="thermometer">Thermometer</option>
+                    <option value="sun">Sun</option>
+                    <option value="moon">Moon</option>
+                    <option value="trendingUp">Trending Up</option>
+                    <option value="trendingDown">Trending Down</option>
+                    <option value="download">Download</option>
+                    <option value="upload">Upload</option>
+                    <option value="mail">Mail</option>
+                    <option value="phone">Phone</option>
+                    <option value="mapPin">Map Pin</option>
+                    <option value="volume">Volume</option>
+                    <option value="battery">Battery</option>
+                    <option value="trash">Trash</option>
+                    <option value="edit">Edit</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="themeColor">Theme Color</label>
+                <select id="themeColor">
+                    <option value="cyan">Cyan</option>
+                    <option value="purple">Purple</option>
+                    <option value="green">Green</option>
+                    <option value="red">Red</option>
+                    <option value="orange">Orange</option>
+                    <option value="pink">Pink</option>
+                    <option value="blue">Blue</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="gray">Gray</option>
+                    <option value="white">White</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="panel" id="panel-advanced">
+            <div class="field">
+                <label for="headers">Headers</label>
+                <textarea id="headers" rows="3" placeholder='{"Authorization": "Bearer token"}'></textarea>
+                <div class="hint">Optional JSON object of request headers.</div>
+            </div>
+
+            <div class="field">
+                <label for="pulling">Refresh Interval (seconds)</label>
+                <input id="pulling" type="number" min="5" placeholder="43200" />
+                <div class="hint">Minimum 5. Default 43200 (12 hours).</div>
+            </div>
+        </div>
 
         <div class="footer">
             <a href="https://github.com/lenadweb/stream-deck-json-fetcher" target="_blank" rel="noopener noreferrer">View on GitHub — Open Source (MIT)</a>
@@ -163,6 +280,7 @@
         let websocket = null;
         let uuid = null;
         let settings = {};
+        let currentMode = "json";
 
         function connectElgatoStreamDeckSocket(port, uuidValue, registerEvent, info, actionInfo) {
             uuid = uuidValue;
@@ -190,13 +308,36 @@
 
         function applySettings() {
             document.getElementById("url").value = settings.url || "";
-            document.getElementById("headers").value = settings.headers || "";
             document.getElementById("jsonPath").value = settings.jsonPath || "";
+            document.getElementById("selector").value = settings.selector || "";
             document.getElementById("label").value = settings.label || "";
+            document.getElementById("headers").value = settings.headers || "";
             document.getElementById("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
             document.getElementById("themeColor").value = settings.themeColor || "cyan";
             document.getElementById("formatter").value = settings.formatter || "none";
             document.getElementById("icon").value = settings.icon || "none";
+            setMode(settings.mode === "html" ? "html" : "json", false);
+        }
+
+        function setMode(mode, save) {
+            currentMode = mode;
+            document.querySelectorAll("#mode button").forEach(function (btn) {
+                btn.classList.toggle("active", btn.dataset.mode === mode);
+            });
+            document.getElementById("field-jsonPath").classList.toggle("hidden", mode !== "json");
+            document.getElementById("field-selector").classList.toggle("hidden", mode !== "html");
+            if (save) {
+                saveSettings();
+            }
+        }
+
+        function setTab(tab) {
+            document.querySelectorAll(".tab").forEach(function (el) {
+                el.classList.toggle("active", el.dataset.tab === tab);
+            });
+            document.querySelectorAll(".panel").forEach(function (el) {
+                el.classList.toggle("active", el.id === "panel-" + tab);
+            });
         }
 
         let saveTimer = null;
@@ -207,13 +348,15 @@
 
         function commitSettings() {
             settings.url = document.getElementById("url").value.trim();
-            settings.headers = document.getElementById("headers").value.trim();
+            settings.mode = currentMode;
             settings.jsonPath = document.getElementById("jsonPath").value.trim();
+            settings.selector = document.getElementById("selector").value.trim();
             settings.label = document.getElementById("label").value.trim();
-            
+            settings.headers = document.getElementById("headers").value.trim();
+
             const pullingVal = parseInt(document.getElementById("pulling").value, 10);
             settings.pulling = !isNaN(pullingVal) ? pullingVal : 43200;
-            
+
             settings.themeColor = document.getElementById("themeColor").value;
             settings.formatter = document.getElementById("formatter").value;
             settings.icon = document.getElementById("icon").value;
@@ -228,14 +371,15 @@
         }
 
         document.addEventListener("DOMContentLoaded", function () {
-            document.getElementById("url").addEventListener("change", saveSettings);
-            document.getElementById("headers").addEventListener("change", saveSettings);
-            document.getElementById("jsonPath").addEventListener("change", saveSettings);
-            document.getElementById("label").addEventListener("change", saveSettings);
-            document.getElementById("pulling").addEventListener("change", saveSettings);
-            document.getElementById("themeColor").addEventListener("change", saveSettings);
-            document.getElementById("formatter").addEventListener("change", saveSettings);
-            document.getElementById("icon").addEventListener("change", saveSettings);
+            ["url", "jsonPath", "selector", "label", "headers", "pulling", "themeColor", "formatter", "icon"].forEach(function (id) {
+                document.getElementById(id).addEventListener("change", saveSettings);
+            });
+            document.querySelectorAll(".tab").forEach(function (el) {
+                el.addEventListener("click", function () { setTab(el.dataset.tab); });
+            });
+            document.querySelectorAll("#mode button").forEach(function (el) {
+                el.addEventListener("click", function () { setMode(el.dataset.mode, true); });
+            });
             applySettings();
         });
     </script>
