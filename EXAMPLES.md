@@ -1,14 +1,126 @@
 # Examples
 
-A collection of real, useful things you can put on a key or dial with JSON Fetcher.
+100+ real, useful (and a few delightfully weird) things you can put on a Stream Deck key or dial with JSON Fetcher.
 
-Each example lists the **Source Type** (JSON path or HTML selector), the **URL**, the field to extract, and a suggested **Format** / **Icon**. Replace placeholders like `<owner>/<repo>`, `<user>`, `<pkg>`, `<token>` with your own values.
+Each entry lists the **URL**, the field to extract (**JSON Path** or **CSS Selector**), and a suggested **Format** / **Icon**. Replace placeholders like `<owner>/<repo>`, `<user>`, `<pkg>`, `<token>`, `<key>` with your own values.
 
-> Tip: the default refresh interval is 12 hours. Lower it (e.g. 30–300 s) for volatile data like prices, and keep it high for slow-moving stats to respect rate limits.
+**Notes that apply throughout**
+- Most endpoints below need **no API key**. Where a key/token is required it is called out.
+- The default refresh interval is 12 hours. Lower it (30–300 s) for live data like prices/players, keep it high for slow stats to respect rate limits.
+- A few endpoints return a **bare number** (e.g. block height) — in that case leave **JSON Path empty**.
+- "Random" endpoints (facts, jokes, quotes) return something new every fetch — fun on a short interval.
+
+---
+
+## 💰 Crypto
+
+**Bitcoin price (USD)**
+- URL: `https://api.coinbase.com/v2/prices/BTC-USD/spot`
+- JSON Path: `data.amount` · Format: Currency USD · Icon: Dollar
+
+**Ethereum price (USD)**
+- URL: `https://api.coinbase.com/v2/prices/ETH-USD/spot`
+- JSON Path: `data.amount` · Format: Currency USD · Icon: Trending Up
+
+**Any coin price (CoinGecko)**
+- URL: `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd`
+- JSON Path: `bitcoin.usd` · Format: Currency USD · Icon: Dollar
+
+**Bitcoin 24h change**
+- URL: `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true`
+- JSON Path: `bitcoin.usd_24h_change` · Format: Percentage · Icon: Activity
+
+**Total crypto market cap (USD)**
+- URL: `https://api.coingecko.com/api/v3/global`
+- JSON Path: `data.total_market_cap.usd` · Format: Abbreviate · Icon: Globe
+
+**Crypto market cap 24h change**
+- URL: `https://api.coingecko.com/api/v3/global`
+- JSON Path: `data.market_cap_change_percentage_24h_usd` · Format: Percentage · Icon: Activity
+
+**Bitcoin dominance**
+- URL: `https://api.coingecko.com/api/v3/global`
+- JSON Path: `data.market_cap_percentage.btc` · Format: Percentage · Icon: Percent
+
+**Number of active cryptocurrencies**
+- URL: `https://api.coingecko.com/api/v3/global`
+- JSON Path: `data.active_cryptocurrencies` · Format: Abbreviate · Icon: Database
+
+**#1 trending coin right now**
+- URL: `https://api.coingecko.com/api/v3/search/trending`
+- JSON Path: `coins[0].item.name` · Format: As Is · Icon: Trending Up
+
+**Crypto Fear & Greed (value)**
+- URL: `https://api.alternative.me/fng/?limit=1`
+- JSON Path: `data[0].value` · Format: Integer · Icon: Activity
+
+**Crypto Fear & Greed (label)**
+- URL: `https://api.alternative.me/fng/?limit=1`
+- JSON Path: `data[0].value_classification` · Format: Uppercase · Icon: Info
+
+**BTC → USD exchange rate (Coinbase)**
+- URL: `https://api.coinbase.com/v2/exchange-rates?currency=BTC`
+- JSON Path: `data.rates.USD` · Format: Currency USD · Icon: Dollar
+
+**Bitcoin price (Blockchain.info)**
+- URL: `https://api.blockchain.info/stats`
+- JSON Path: `market_price_usd` · Format: Currency USD · Icon: Dollar
+
+**Bitcoin transactions today**
+- URL: `https://api.blockchain.info/stats`
+- JSON Path: `n_tx` · Format: Abbreviate · Icon: Activity
+
+**Bitcoin block height**
+- URL: `https://api.blockchain.info/stats`
+- JSON Path: `n_blocks_total` · Format: Integer · Icon: Database
+
+**Bitcoin network hash rate**
+- URL: `https://api.blockchain.info/stats`
+- JSON Path: `hash_rate` · Format: Abbreviate · Icon: CPU
+
+**Recommended BTC fee (sat/vB)**
+- URL: `https://mempool.space/api/v1/fees/recommended`
+- JSON Path: `fastestFee` · Format: Integer · Icon: Activity
+
+**Latest BTC block height (mempool)**
+- URL: `https://mempool.space/api/blocks/tip/height`
+- JSON Path: *(leave empty)* · Format: Integer · Icon: Database
+
+---
+
+## 📈 Stocks, Gold & FX
+
+> Yahoo Finance is unofficial and may occasionally rate-limit — keep the interval modest.
+
+**Stock price (e.g. AAPL)**
+- URL: `https://query1.finance.yahoo.com/v8/finance/chart/AAPL`
+- JSON Path: `chart.result[0].meta.regularMarketPrice` · Format: Currency USD · Icon: Trending Up
+
+**Index / ETF (e.g. S&P 500 `^GSPC`)**
+- URL: `https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC`
+- JSON Path: `chart.result[0].meta.regularMarketPrice` · Format: Integer · Icon: Activity
+
+**Gold spot (futures `GC=F`)**
+- URL: `https://query1.finance.yahoo.com/v8/finance/chart/GC=F`
+- JSON Path: `chart.result[0].meta.regularMarketPrice` · Format: Currency USD · Icon: Star
+
+**52-week high (e.g. AAPL)**
+- URL: `https://query1.finance.yahoo.com/v8/finance/chart/AAPL`
+- JSON Path: `chart.result[0].meta.fiftyTwoWeekHigh` · Format: Currency USD · Icon: Trending Up
+
+**USD → EUR exchange rate**
+- URL: `https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR`
+- JSON Path: `rates.EUR` · Format: As Is · Icon: Euro
+
+**Any fiat pair (e.g. EUR → GBP)**
+- URL: `https://api.frankfurter.dev/v1/latest?base=EUR&symbols=GBP`
+- JSON Path: `rates.GBP` · Format: As Is · Icon: Dollar
 
 ---
 
 ## ⭐ GitHub
+
+> Unauthenticated GitHub API allows 60 requests/hour. For more, add **Headers**: `{"Authorization": "Bearer <token>"}`.
 
 **Repository stars**
 - URL: `https://api.github.com/repos/<owner>/<repo>`
@@ -34,37 +146,13 @@ Each example lists the **Source Type** (JSON path or HTML selector), the **URL**
 - URL: `https://api.github.com/users/<user>`
 - JSON Path: `followers` · Format: Abbreviate · Icon: User
 
-> GitHub allows 60 unauthenticated requests/hour. For higher limits add a token in **Headers**: `{"Authorization": "Bearer <token>"}`.
+**Your public repo count**
+- URL: `https://api.github.com/users/<user>`
+- JSON Path: `public_repos` · Format: Integer · Icon: Database
 
----
-
-## 💰 Crypto & Finance
-
-**Bitcoin price (USD)**
-- URL: `https://api.coinbase.com/v2/prices/BTC-USD/spot`
-- JSON Path: `data.amount` · Format: Currency USD · Icon: Dollar
-
-**Ethereum price (USD)**
-- URL: `https://api.coinbase.com/v2/prices/ETH-USD/spot`
-- JSON Path: `data.amount` · Format: Currency USD · Icon: Trending Up
-
-**Bitcoin 24h change**
-- URL: `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true`
-- JSON Path: `bitcoin.usd_24h_change` · Format: Percentage · Icon: Activity
-
-**Crypto Fear & Greed Index**
-- URL: `https://api.alternative.me/fng/`
-- JSON Path: `data[0].value` · Format: Integer · Icon: Activity
-
-**Fear & Greed label** (e.g. "Greed")
-- URL: `https://api.alternative.me/fng/`
-- JSON Path: `data[0].value_classification` · Format: Uppercase · Icon: Info
-
-**USD → EUR exchange rate**
-- URL: `https://api.frankfurter.app/latest?from=USD&to=EUR`
-- JSON Path: `rates.EUR` · Format: As Is · Icon: Euro
-
-> Swap `from`/`to` for any fiat pair, e.g. `?from=EUR&to=GBP` → `rates.GBP`.
+**Your remaining API rate limit**
+- URL: `https://api.github.com/rate_limit`
+- JSON Path: `resources.core.remaining` · Format: Integer · Icon: Activity
 
 ---
 
@@ -96,13 +184,37 @@ Each example lists the **Source Type** (JSON path or HTML selector), the **URL**
 
 ---
 
-## 🌦️ Weather (no API key — Open-Meteo)
+## 🎮 Gaming & Chess
 
-> Coordinates below are Berlin (`52.52, 13.41`). Replace with your own.
+**Live players in a Steam game** (appid `730` = CS2, `570` = Dota 2, `578080` = PUBG)
+- URL: `https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=730`
+- JSON Path: `response.player_count` · Format: Abbreviate · Icon: Activity
+
+**Lichess blitz rating**
+- URL: `https://lichess.org/api/user/<username>`
+- JSON Path: `perfs.blitz.rating` · Format: Integer · Icon: Activity
+
+**Lichess bullet rating**
+- URL: `https://lichess.org/api/user/<username>`
+- JSON Path: `perfs.bullet.rating` · Format: Integer · Icon: Play
+
+**Pokémon base XP (just for fun)**
+- URL: `https://pokeapi.co/api/v2/pokemon/pikachu`
+- JSON Path: `base_experience` · Format: Integer · Icon: Star
+
+---
+
+## 🌦️ Weather & Air Quality (no key — Open-Meteo)
+
+> Coordinates below are Berlin (`52.52, 13.41`). Replace with yours.
 
 **Current temperature**
 - URL: `https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m`
 - JSON Path: `current.temperature_2m` · Format: Integer · Icon: Thermometer
+
+**Feels-like temperature**
+- URL: `https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=apparent_temperature`
+- JSON Path: `current.apparent_temperature` · Format: Integer · Icon: Thermometer
 
 **Wind speed**
 - URL: `https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=wind_speed_10m`
@@ -116,41 +228,102 @@ Each example lists the **Source Type** (JSON path or HTML selector), the **URL**
 - URL: `https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=is_day`
 - JSON Path: `current.is_day` · Format: On / Off · Icon: Sun
 
+**Air quality (European AQI)**
+- URL: `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=52.52&longitude=13.41&current=european_aqi`
+- JSON Path: `current.european_aqi` · Format: Integer · Icon: Cloud
+
+**PM2.5 particulates**
+- URL: `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=52.52&longitude=13.41&current=pm2_5`
+- JSON Path: `current.pm2_5` · Format: Integer · Icon: Alert
+
 ---
 
-## 🟢 Status & Uptime
+## ⚡ Energy, Earth & Sky
+
+**UK grid carbon intensity (gCO₂/kWh)**
+- URL: `https://api.carbonintensity.org.uk/intensity`
+- JSON Path: `data[0].intensity.actual` · Format: Integer · Icon: Activity
+
+**UK grid carbon level** (low / moderate / high)
+- URL: `https://api.carbonintensity.org.uk/intensity`
+- JSON Path: `data[0].intensity.index` · Format: Uppercase · Icon: Shield
+
+**Earthquakes worldwide this week (M4.5+)**
+- URL: `https://earthquake.usgs.gov/fdsnws/event/1/count?format=geojson&starttime=NOW-7days&minmagnitude=4.5`
+- JSON Path: `count` · Format: Integer · Icon: Alert
+
+**Today's sunrise time**
+- URL: `https://api.sunrise-sunset.org/json?lat=52.52&lng=13.41&formatted=0`
+- JSON Path: `results.sunrise` · Format: As Is · Icon: Sun
+
+**Length of day (seconds)**
+- URL: `https://api.sunrise-sunset.org/json?lat=52.52&lng=13.41&formatted=0`
+- JSON Path: `results.day_length` · Format: Abbreviate · Icon: Clock
+
+---
+
+## 🚀 Space & Science
+
+**People currently in space**
+- URL: `http://api.open-notify.org/astros.json`
+- JSON Path: `number` · Format: Integer · Icon: User
+
+**ISS latitude (live)**
+- URL: `http://api.open-notify.org/iss-now.json`
+- JSON Path: `iss_position.latitude` · Format: As Is · Icon: Globe
+
+**ISS longitude (live)**
+- URL: `http://api.open-notify.org/iss-now.json`
+- JSON Path: `iss_position.longitude` · Format: As Is · Icon: Map Pin
+
+**ISS orbital speed (km/h)**
+- URL: `https://api.wheretheiss.at/v1/satellites/25544`
+- JSON Path: `velocity` · Format: Integer · Icon: Activity
+
+**ISS altitude (km)**
+- URL: `https://api.wheretheiss.at/v1/satellites/25544`
+- JSON Path: `altitude` · Format: Integer · Icon: Trending Up
+
+**Near-Earth asteroids passing today**
+- URL: `https://api.nasa.gov/neo/rest/v1/feed/today?detailed=false&api_key=DEMO_KEY`
+- JSON Path: `element_count` · Format: Integer · Icon: Alert
+- Note: `DEMO_KEY` is shared/rate-limited — get a free key at api.nasa.gov.
+
+---
+
+## 🟢 Service Status
 
 **GitHub system status**
 - URL: `https://www.githubstatus.com/api/v2/status.json`
 - JSON Path: `status.description` · Format: As Is · Icon: Shield
 
-**Any Statuspage.io service** (Cloudflare, Discord, OpenAI, Reddit…)
-- URL: `https://<service>.statuspage.io/api/v2/status.json`
-- JSON Path: `status.indicator` (`none` / `minor` / `major`) · Format: Uppercase · Icon: Shield
-
 **Cloudflare status**
 - URL: `https://www.cloudflarestatus.com/api/v2/status.json`
 - JSON Path: `status.description` · Format: As Is · Icon: Cloud
+
+**Any Statuspage.io service** (Discord, OpenAI, Reddit, Atlassian…)
+- URL: `https://<service>.statuspage.io/api/v2/status.json`
+- JSON Path: `status.indicator` (`none` / `minor` / `major`) · Format: Uppercase · Icon: Shield
 
 ---
 
 ## 🏠 Self-Hosted / Homelab
 
-**Home Assistant — sensor state** (e.g. a temperature sensor)
+**Home Assistant — sensor state**
 - URL: `https://<ha-host>/api/states/sensor.<entity>`
 - JSON Path: `state` · Format: As Is · Icon: Thermometer
 - Headers: `{"Authorization": "Bearer <long-lived-token>"}`
 
-**Home Assistant — device attribute** (e.g. battery level)
+**Home Assistant — device battery**
 - URL: `https://<ha-host>/api/states/sensor.<entity>`
 - JSON Path: `attributes.battery_level` · Format: Percentage · Icon: Battery
 - Headers: `{"Authorization": "Bearer <long-lived-token>"}`
 
-**Prometheus — instant query** (e.g. node up, CPU, memory)
+**Prometheus — instant query** (CPU, memory, `up`, anything)
 - URL: `https://<prometheus>/api/v1/query?query=up`
 - JSON Path: `data.result[0].value[1]` · Format: As Is · Icon: Activity
 
-**Pi-hole — queries today**
+**Pi-hole — DNS queries today**
 - URL: `http://pi.hole/admin/api.php`
 - JSON Path: `dns_queries_today` · Format: Abbreviate · Icon: Shield
 
@@ -158,7 +331,7 @@ Each example lists the **Source Type** (JSON path or HTML selector), the **URL**
 - URL: `http://pi.hole/admin/api.php`
 - JSON Path: `ads_percentage_today` · Format: Percentage · Icon: Shield
 
-**Pi-hole — enabled/disabled**
+**Pi-hole — enabled / disabled**
 - URL: `http://pi.hole/admin/api.php`
 - JSON Path: `status` · Format: On / Off · Icon: Shield
 
@@ -169,9 +342,9 @@ Each example lists the **Source Type** (JSON path or HTML selector), the **URL**
 **Reddit — subreddit subscribers**
 - URL: `https://www.reddit.com/r/<subreddit>/about.json`
 - JSON Path: `data.subscribers` · Format: Abbreviate · Icon: User
-- Headers: `{"User-Agent": "streamdeck-fetcher"}` (Reddit blocks empty user agents)
+- Headers: `{"User-Agent": "streamdeck-fetcher"}` (Reddit blocks empty/blocked user agents)
 
-**Reddit — active users right now**
+**Reddit — users online now**
 - URL: `https://www.reddit.com/r/<subreddit>/about.json`
 - JSON Path: `data.active_user_count` · Format: Abbreviate · Icon: Activity
 
@@ -183,25 +356,129 @@ Each example lists the **Source Type** (JSON path or HTML selector), the **URL**
 - URL: `https://hacker-news.firebaseio.com/v0/item/<itemId>.json`
 - JSON Path: `score` · Format: Integer · Icon: Trending Up
 
+**Hacker News — current #1 story id**
+- URL: `https://hacker-news.firebaseio.com/v0/topstories.json`
+- JSON Path: `[0]` · Format: As Is · Icon: Info
+
 ---
 
-## 🌐 Network & Space
+## 🏆 Sports
+
+**Formula 1 — next race name**
+- URL: `https://api.jolpi.ca/ergast/f1/current/next.json`
+- JSON Path: `MRData.RaceTable.Races[0].raceName` · Format: As Is · Icon: Activity
+
+**Formula 1 — next race date**
+- URL: `https://api.jolpi.ca/ergast/f1/current/next.json`
+- JSON Path: `MRData.RaceTable.Races[0].date` · Format: As Is · Icon: Clock
+
+**Premier League — current leader** (TheSportsDB free key `3`)
+- URL: `https://www.thesportsdb.com/api/v1/json/3/lookuptable.php?l=4328&s=2024-2025`
+- JSON Path: `table[0].strTeam` · Format: As Is · Icon: Star
+
+**Premier League — leader's points**
+- URL: `https://www.thesportsdb.com/api/v1/json/3/lookuptable.php?l=4328&s=2024-2025`
+- JSON Path: `table[0].intPoints` · Format: Integer · Icon: Trending Up
+
+---
+
+## 🌍 World & Open Data
+
+**Country population** (World Bank, e.g. US)
+- URL: `https://api.worldbank.org/v2/country/US/indicator/SP.POP.TOTL?format=json&per_page=1&mrnev=1`
+- JSON Path: `[1][0].value` · Format: Abbreviate · Icon: User
+
+**Current time in a timezone**
+- URL: `https://timeapi.io/api/Time/current/zone?timeZone=Europe/London`
+- JSON Path: `time` · Format: As Is · Icon: Clock
+
+**Day of the week somewhere**
+- URL: `https://timeapi.io/api/Time/current/zone?timeZone=Asia/Tokyo`
+- JSON Path: `dayOfWeek` · Format: As Is · Icon: Clock
+
+**Next public holiday (by country)**
+- URL: `https://date.nager.at/api/v3/NextPublicHolidays/US`
+- JSON Path: `[0].name` · Format: As Is · Icon: Bell
+
+**Next public holiday date**
+- URL: `https://date.nager.at/api/v3/NextPublicHolidays/US`
+- JSON Path: `[0].date` · Format: As Is · Icon: Clock
 
 **Your public IP**
 - URL: `https://api.ipify.org?format=json`
 - JSON Path: `ip` · Format: As Is · Icon: Globe
 
-**Your IP's country**
-- URL: `https://ipapi.co/json/`
-- JSON Path: `country_name` · Format: As Is · Icon: Map Pin
+**Your city (by IP)**
+- URL: `https://ipinfo.io/json`
+- JSON Path: `city` · Format: As Is · Icon: Map Pin
 
-**ISS orbital velocity (km/h)**
-- URL: `https://api.wheretheiss.at/v1/satellites/25544`
-- JSON Path: `velocity` · Format: Integer · Icon: Activity
+**Your ISP / network (by IP)**
+- URL: `https://ipinfo.io/json`
+- JSON Path: `org` · Format: As Is · Icon: WiFi
 
-**ISS altitude (km)**
-- URL: `https://api.wheretheiss.at/v1/satellites/25544`
-- JSON Path: `altitude` · Format: Integer · Icon: Trending Up
+---
+
+## 🎲 Fun & Random
+
+**Random useless fact**
+- URL: `https://uselessfacts.jsph.pl/api/v2/facts/random`
+- JSON Path: `text` · Format: As Is · Icon: Info
+
+**Random advice**
+- URL: `https://api.adviceslip.com/advice`
+- JSON Path: `slip.advice` · Format: As Is · Icon: Help
+
+**Random cat fact**
+- URL: `https://catfact.ninja/fact`
+- JSON Path: `fact` · Format: As Is · Icon: Heart
+
+**Random dog fact**
+- URL: `https://dogapi.dog/api/v2/facts`
+- JSON Path: `data[0].attributes.body` · Format: As Is · Icon: Heart
+
+**Chuck Norris joke**
+- URL: `https://api.chucknorris.io/jokes/random`
+- JSON Path: `value` · Format: As Is · Icon: Star
+
+**Random programming/pun joke**
+- URL: `https://v2.jokeapi.dev/joke/Any?type=single`
+- JSON Path: `joke` · Format: As Is · Icon: Code
+
+**Kanye West wisdom**
+- URL: `https://api.kanye.rest/`
+- JSON Path: `quote` · Format: As Is · Icon: Star
+
+**Trivia question of the moment**
+- URL: `https://opentdb.com/api.php?amount=1&type=multiple`
+- JSON Path: `results[0].question` · Format: As Is · Icon: Help
+
+**Word definition (dictionary)**
+- URL: `https://api.dictionaryapi.dev/api/v2/entries/en/serendipity`
+- JSON Path: `[0].meanings[0].definitions[0].definition` · Format: As Is · Icon: Search
+
+**Word pronunciation (IPA)**
+- URL: `https://api.dictionaryapi.dev/api/v2/entries/en/serendipity`
+- JSON Path: `[0].phonetic` · Format: As Is · Icon: Info
+
+**Urban Dictionary definition**
+- URL: `https://api.urbandictionary.com/v0/define?term=yolo`
+- JSON Path: `list[0].definition` · Format: As Is · Icon: Search
+
+**Predicted age for a name**
+- URL: `https://api.agify.io?name=michael`
+- JSON Path: `age` · Format: Integer · Icon: User
+
+**Predicted gender for a name**
+- URL: `https://api.genderize.io?name=alice`
+- JSON Path: `gender` · Format: Uppercase · Icon: User
+
+**Total breweries in the database**
+- URL: `https://api.openbrewerydb.org/v1/breweries/meta`
+- JSON Path: `total` · Format: Abbreviate · Icon: Database
+
+**Wikipedia article summary** (e.g. Bitcoin)
+- URL: `https://en.wikipedia.org/api/rest_v1/page/summary/Bitcoin`
+- JSON Path: `extract` · Format: As Is · Icon: Info
 
 ---
 
@@ -213,7 +490,7 @@ Use **Source Type: HTML** when there is no API. The plugin returns the first mat
 - URL: any page
 - Selector: `title` · Format: As Is
 
-**Open Graph title** (article/video headline)
+**Open Graph title** (article / video headline)
 - URL: any page
 - Selector: `meta[property='og:title']@content` · Format: As Is
 
@@ -221,7 +498,7 @@ Use **Source Type: HTML** when there is no API. The plugin returns the first mat
 - URL: a product page
 - Selector: `meta[property='product:price:amount']@content` · Format: Currency USD · Icon: Dollar
 
-**Hacker News — current top story**
+**Hacker News — current top story headline**
 - URL: `https://news.ycombinator.com/`
 - Selector: `.titleline a` · Format: As Is · Icon: Info
 
