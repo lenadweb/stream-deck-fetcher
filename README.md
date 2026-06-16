@@ -45,7 +45,7 @@ The Property Inspector is organised into three tabs:
 
 ## Examples
 
-See [EXAMPLES.md](EXAMPLES.md) for 40+ ready-to-use recipes — GitHub stars, crypto prices, npm/Docker stats, weather, service status, homelab metrics, and more.
+See [EXAMPLES.md](EXAMPLES.md) for 100+ ready-to-use recipes — crypto & stock prices, GitHub stars, npm/Docker stats, live game players, weather & air quality, space data, service status, homelab metrics, and more.
 
 ## Development
 
