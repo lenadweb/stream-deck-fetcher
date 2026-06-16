@@ -187,17 +187,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
     }
 
     private deriveLabel(settings: FetcherSettings): string {
-        if (settings.label) {
-            return settings.label;
-        }
-        if (settings.url) {
-            try {
-                return new URL(settings.url).hostname;
-            } catch {
-                return "Fetcher";
-            }
-        }
-        return "Fetcher";
+        return settings.label ? settings.label : "";
     }
 
     private extractJson(text: string, path: string): unknown {
