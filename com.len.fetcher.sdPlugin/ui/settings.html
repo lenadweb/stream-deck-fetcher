@@ -274,8 +274,8 @@
         </div>
 
         <div class="footer">
-            <a href="https://github.com/lenadweb/stream-deck-json-fetcher" target="_blank" rel="noopener noreferrer">View on GitHub</a>
-            <a href="https://github.com/lenadweb/stream-deck-json-fetcher/blob/main/EXAMPLES.md" target="_blank" rel="noopener noreferrer">Examples</a>
+            <a href="#" data-url="https://github.com/lenadweb/stream-deck-json-fetcher">View on GitHub</a>
+            <a href="#" data-url="https://github.com/lenadweb/stream-deck-json-fetcher/blob/main/EXAMPLES.md">Examples</a>
         </div>
     </div>
 
@@ -373,6 +373,12 @@
             }
         }
 
+        function openUrl(url) {
+            if (websocket && url) {
+                websocket.send(JSON.stringify({ event: "openUrl", payload: { url: url } }));
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             ["url", "jsonPath", "selector", "label", "headers", "pulling", "themeColor", "formatter", "icon"].forEach(function (id) {
                 document.getElementById(id).addEventListener("change", saveSettings);
@@ -382,6 +388,12 @@
             });
             document.querySelectorAll("#mode button").forEach(function (el) {
                 el.addEventListener("click", function () { setMode(el.dataset.mode, true); });
+            });
+            document.querySelectorAll(".footer a").forEach(function (el) {
+                el.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    openUrl(el.dataset.url);
+                });
             });
             applySettings();
         });
