@@ -7,12 +7,14 @@
     <style>
         :root {
             --bg: #2d2d2d;
-            --panel: #1a1a1a;
+            --panel: #232323;
+            --panel-input: #1a1a1a;
             --border: #3a3a3a;
             --border-strong: #555;
-            --text: #d8d8d8;
+            --text: #e8e8e8;
             --muted: #8a8a8a;
             --accent: #06b6d4;
+            --danger: #ef4444;
         }
         * { box-sizing: border-box; }
         body {
@@ -21,13 +23,62 @@
             background-color: var(--bg);
             color: var(--text);
             font-size: 13px;
+            -webkit-font-smoothing: antialiased;
         }
-        .container { padding: 10px 12px 14px; }
+        .container { padding: 12px 14px 14px; }
 
+        /* Preview */
+        .preview {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        .tile {
+            position: relative;
+            width: 112px;
+            height: 112px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #090514 0%, #140f28 100%);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .04);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .tile-label {
+            position: absolute;
+            top: 14px;
+            left: 6px;
+            right: 6px;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tile-row { display: flex; align-items: center; gap: 6px; padding: 0 8px; }
+        .tile-dot { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; display: none; }
+        .tile-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tile-value.error { color: var(--danger); }
+
+        /* Tabs */
         .tabs {
             display: flex;
             gap: 4px;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             border-bottom: 1px solid var(--border);
         }
         .tab {
@@ -43,15 +94,13 @@
             transition: color .15s, border-color .15s;
         }
         .tab:hover { color: var(--text); }
-        .tab.active {
-            color: #fff;
-            border-bottom-color: var(--accent);
-        }
+        .tab.active { color: #fff; border-bottom-color: var(--accent); }
 
-        .panel { display: none; }
+        .panel { display: none; animation: fade .18s ease; }
         .panel.active { display: block; }
+        @keyframes fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
-        .field { margin-bottom: 12px; }
+        .field { margin-bottom: 13px; }
         .field > label {
             display: block;
             margin-bottom: 5px;
@@ -61,67 +110,113 @@
             color: var(--muted);
             text-transform: uppercase;
         }
-        .field .hint {
-            margin-top: 4px;
+        .hint {
+            margin-top: 5px;
             font-size: 11px;
             color: var(--muted);
             line-height: 1.4;
         }
-        .field .hint code {
+        .hint code {
             background: #000;
             padding: 1px 4px;
             border-radius: 3px;
             font-size: 10px;
         }
+        .error-msg {
+            display: none;
+            margin-top: 5px;
+            font-size: 11px;
+            color: var(--danger);
+        }
 
         input, select, textarea {
             width: 100%;
-            background-color: var(--panel);
+            background-color: var(--panel-input);
             color: #fff;
             border: 1px solid var(--border-strong);
-            border-radius: 4px;
-            padding: 6px 8px;
+            border-radius: 5px;
+            padding: 7px 9px;
             font-size: 13px;
             font-family: inherit;
+            transition: border-color .15s, box-shadow .15s;
         }
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, .18);
         }
-        textarea {
-            font-family: monospace;
-            resize: vertical;
-            min-height: 56px;
+        input.invalid, textarea.invalid {
+            border-color: var(--danger);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, .15);
         }
-        select { height: 32px; }
+        textarea { font-family: ui-monospace, Menlo, Consolas, monospace; resize: vertical; min-height: 58px; }
+        select {
+            height: 34px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
+            cursor: pointer;
+        }
 
+        /* Segmented control */
         .segmented {
             display: flex;
             border: 1px solid var(--border-strong);
-            border-radius: 4px;
+            border-radius: 5px;
             overflow: hidden;
         }
         .segmented button {
             flex: 1;
-            padding: 7px 4px;
-            background: var(--panel);
+            padding: 8px 4px;
+            background: var(--panel-input);
             border: none;
             color: var(--muted);
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
+            transition: background .15s, color .15s;
         }
         .segmented button + button { border-left: 1px solid var(--border-strong); }
-        .segmented button.active {
-            background: var(--accent);
-            color: #06222a;
+        .segmented button:hover:not(.active) { color: var(--text); }
+        .segmented button.active { background: var(--accent); color: #06222a; }
+
+        /* Color swatches */
+        .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+        .swatch {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform .12s, border-color .12s;
         }
+        .swatch:hover { transform: scale(1.12); }
+        .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(0, 0, 0, .4); }
+
+        /* Interval presets */
+        .presets { display: flex; gap: 6px; margin-top: 8px; }
+        .chip {
+            padding: 4px 10px;
+            background: var(--panel-input);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+        .chip:hover { color: var(--text); border-color: var(--accent); }
+        .chip.active { background: var(--accent); color: #06222a; border-color: var(--accent); }
 
         .footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 14px;
+            margin-top: 16px;
             padding-top: 10px;
             border-top: 1px solid var(--border);
             font-size: 11px;
@@ -134,6 +229,16 @@
 
 <body>
     <div class="container">
+        <div class="preview">
+            <div class="tile">
+                <div class="tile-label" id="pv-label">FETCHER</div>
+                <div class="tile-row">
+                    <div class="tile-dot" id="pv-dot"></div>
+                    <div class="tile-value" id="pv-value">1.2k</div>
+                </div>
+            </div>
+        </div>
+
         <div class="tabs">
             <button class="tab active" data-tab="data">Data</button>
             <button class="tab" data-tab="display">Display</button>
@@ -144,6 +249,7 @@
             <div class="field">
                 <label for="url">URL</label>
                 <input id="url" type="text" placeholder="https://api.example.com/data" />
+                <div class="error-msg" id="err-url">Enter a valid http(s) URL.</div>
             </div>
 
             <div class="field">
@@ -157,7 +263,7 @@
             <div class="field" id="field-jsonPath">
                 <label for="jsonPath">JSON Path</label>
                 <input id="jsonPath" type="text" placeholder="data.value" />
-                <div class="hint">Dot/bracket path, e.g. <code>data.items[0].value</code></div>
+                <div class="hint">Dot/bracket path, e.g. <code>data.items[0].value</code>. Leave empty for a bare value.</div>
             </div>
 
             <div class="field hidden" id="field-selector">
@@ -243,19 +349,9 @@
             </div>
 
             <div class="field">
-                <label for="themeColor">Theme Color</label>
-                <select id="themeColor">
-                    <option value="cyan">Cyan</option>
-                    <option value="purple">Purple</option>
-                    <option value="green">Green</option>
-                    <option value="red">Red</option>
-                    <option value="orange">Orange</option>
-                    <option value="pink">Pink</option>
-                    <option value="blue">Blue</option>
-                    <option value="yellow">Yellow</option>
-                    <option value="gray">Gray</option>
-                    <option value="white">White</option>
-                </select>
+                <label>Theme Color</label>
+                <div class="swatches" id="swatches"></div>
+                <div class="hint">Tints the icon on the key.</div>
             </div>
         </div>
 
@@ -264,12 +360,19 @@
                 <label for="headers">Headers</label>
                 <textarea id="headers" rows="3" placeholder='{"Authorization": "Bearer token"}'></textarea>
                 <div class="hint">Optional JSON object of request headers.</div>
+                <div class="error-msg" id="err-headers">Headers must be a valid JSON object.</div>
             </div>
 
             <div class="field">
                 <label for="pulling">Refresh Interval (seconds)</label>
                 <input id="pulling" type="number" min="5" placeholder="43200" />
-                <div class="hint">Minimum 5. Default 43200 (12 hours).</div>
+                <div class="presets" id="presets">
+                    <span class="chip" data-sec="30">30s</span>
+                    <span class="chip" data-sec="300">5m</span>
+                    <span class="chip" data-sec="3600">1h</span>
+                    <span class="chip" data-sec="43200">12h</span>
+                </div>
+                <div class="hint" id="interval-hint">Minimum 5 seconds.</div>
             </div>
         </div>
 
@@ -280,10 +383,26 @@
     </div>
 
     <script>
+        const THEMES = {
+            cyan: ["#06b6d4", "#3b82f6"],
+            purple: ["#a855f7", "#6366f1"],
+            green: ["#10b981", "#059669"],
+            red: ["#ef4444", "#dc2626"],
+            orange: ["#f97316", "#ea580c"],
+            pink: ["#ec4899", "#db2777"],
+            blue: ["#2563eb", "#1d4ed8"],
+            yellow: ["#eab308", "#ca8a04"],
+            gray: ["#94a3b8", "#475569"],
+            white: ["#f8fafc", "#cbd5e1"]
+        };
+
         let websocket = null;
         let uuid = null;
         let settings = {};
         let currentMode = "json";
+        let currentTheme = "cyan";
+
+        function $(id) { return document.getElementById(id); }
 
         function connectElgatoStreamDeckSocket(port, uuidValue, registerEvent, info, actionInfo) {
             uuid = uuidValue;
@@ -309,17 +428,44 @@
             };
         }
 
+        function buildSwatches() {
+            const wrap = $("swatches");
+            wrap.innerHTML = "";
+            Object.keys(THEMES).forEach(function (name) {
+                const c = THEMES[name];
+                const el = document.createElement("div");
+                el.className = "swatch";
+                el.dataset.theme = name;
+                el.title = name;
+                el.style.background = "linear-gradient(135deg, " + c[0] + ", " + c[1] + ")";
+                el.addEventListener("click", function () { setTheme(name, true); });
+                wrap.appendChild(el);
+            });
+        }
+
+        function setTheme(name, save) {
+            currentTheme = THEMES[name] ? name : "cyan";
+            document.querySelectorAll(".swatch").forEach(function (el) {
+                el.classList.toggle("active", el.dataset.theme === currentTheme);
+            });
+            updatePreview();
+            if (save) { saveSettings(); }
+        }
+
         function applySettings() {
-            document.getElementById("url").value = settings.url || "";
-            document.getElementById("jsonPath").value = settings.jsonPath || "";
-            document.getElementById("selector").value = settings.selector || "";
-            document.getElementById("label").value = settings.label || "";
-            document.getElementById("headers").value = settings.headers || "";
-            document.getElementById("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
-            document.getElementById("themeColor").value = settings.themeColor || "cyan";
-            document.getElementById("formatter").value = settings.formatter || "none";
-            document.getElementById("icon").value = settings.icon || "none";
+            $("url").value = settings.url || "";
+            $("jsonPath").value = settings.jsonPath || "";
+            $("selector").value = settings.selector || "";
+            $("label").value = settings.label || "";
+            $("headers").value = settings.headers || "";
+            $("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
+            $("formatter").value = settings.formatter || "none";
+            $("icon").value = settings.icon || "none";
+            setTheme(settings.themeColor || "cyan", false);
             setMode(settings.mode === "html" ? "html" : "json", false);
+            validate();
+            updatePreview();
+            updateIntervalHint();
         }
 
         function setMode(mode, save) {
@@ -327,11 +473,9 @@
             document.querySelectorAll("#mode button").forEach(function (btn) {
                 btn.classList.toggle("active", btn.dataset.mode === mode);
             });
-            document.getElementById("field-jsonPath").classList.toggle("hidden", mode !== "json");
-            document.getElementById("field-selector").classList.toggle("hidden", mode !== "html");
-            if (save) {
-                saveSettings();
-            }
+            $("field-jsonPath").classList.toggle("hidden", mode !== "json");
+            $("field-selector").classList.toggle("hidden", mode !== "html");
+            if (save) { saveSettings(); }
         }
 
         function setTab(tab) {
@@ -343,6 +487,92 @@
             });
         }
 
+        function formatSample(formatter) {
+            const val = 1234.56;
+            switch (formatter) {
+                case "integer": return "1235";
+                case "percent": return "1235%";
+                case "currency": return "$1234.56";
+                case "currency_eur": return "1234.56 €";
+                case "abbreviate": return "1.2k";
+                case "boolean_status": return "ON";
+                case "uppercase": return "OK";
+                case "lowercase": return "ok";
+                default: return String(val);
+            }
+        }
+
+        function deriveLabel() {
+            const label = $("label").value.trim();
+            if (label) { return label; }
+            const url = $("url").value.trim();
+            if (url) {
+                try { return new URL(url).hostname; } catch (e) { /* ignore */ }
+            }
+            return "Fetcher";
+        }
+
+        function updatePreview() {
+            $("pv-label").textContent = deriveLabel().toUpperCase();
+            $("pv-value").textContent = formatSample($("formatter").value);
+            const icon = $("icon").value;
+            const dot = $("pv-dot");
+            if (icon && icon !== "none") {
+                const c = THEMES[currentTheme] || THEMES.cyan;
+                dot.style.background = "linear-gradient(135deg, " + c[0] + ", " + c[1] + ")";
+                dot.style.display = "block";
+            } else {
+                dot.style.display = "none";
+            }
+        }
+
+        function humanizeSeconds(s) {
+            if (!isFinite(s) || s <= 0) { return ""; }
+            if (s < 60) { return s + " sec"; }
+            if (s < 3600) { return (s / 60).toFixed(s % 60 ? 1 : 0).replace(/\.0$/, "") + " min"; }
+            if (s < 86400) { return (s / 3600).toFixed(s % 3600 ? 1 : 0).replace(/\.0$/, "") + " hours"; }
+            return (s / 86400).toFixed(s % 86400 ? 1 : 0).replace(/\.0$/, "") + " days";
+        }
+
+        function updateIntervalHint() {
+            const raw = parseInt($("pulling").value, 10);
+            const sec = !isNaN(raw) ? raw : 43200;
+            const human = humanizeSeconds(Math.max(5, sec));
+            $("interval-hint").textContent = "Minimum 5 seconds." + (human ? " Currently every " + human + "." : "");
+            document.querySelectorAll("#presets .chip").forEach(function (el) {
+                el.classList.toggle("active", parseInt(el.dataset.sec, 10) === sec);
+            });
+        }
+
+        function validate() {
+            let ok = true;
+            const url = $("url").value.trim();
+            let urlBad = false;
+            if (url) {
+                try {
+                    const u = new URL(url);
+                    urlBad = u.protocol !== "http:" && u.protocol !== "https:";
+                } catch (e) { urlBad = true; }
+            }
+            $("url").classList.toggle("invalid", urlBad);
+            $("err-url").style.display = urlBad ? "block" : "none";
+            if (urlBad) { ok = false; }
+
+            const headers = $("headers").value.trim();
+            let headersBad = false;
+            if (headers) {
+                try {
+                    const parsed = JSON.parse(headers);
+                    headersBad = !parsed || typeof parsed !== "object" || Array.isArray(parsed);
+                } catch (e) { headersBad = true; }
+            }
+            $("headers").classList.toggle("invalid", headersBad);
+            $("err-headers").style.display = headersBad ? "block" : "none";
+            if (headersBad) { ok = false; }
+
+            return ok;
+        }
+
         let saveTimer = null;
         function saveSettings() {
             clearTimeout(saveTimer);
@@ -350,19 +580,19 @@
         }
 
         function commitSettings() {
-            settings.url = document.getElementById("url").value.trim();
+            settings.url = $("url").value.trim();
             settings.mode = currentMode;
-            settings.jsonPath = document.getElementById("jsonPath").value.trim();
-            settings.selector = document.getElementById("selector").value.trim();
-            settings.label = document.getElementById("label").value.trim();
-            settings.headers = document.getElementById("headers").value.trim();
+            settings.jsonPath = $("jsonPath").value.trim();
+            settings.selector = $("selector").value.trim();
+            settings.label = $("label").value.trim();
+            settings.headers = $("headers").value.trim();
 
-            const pullingVal = parseInt(document.getElementById("pulling").value, 10);
+            const pullingVal = parseInt($("pulling").value, 10);
             settings.pulling = !isNaN(pullingVal) ? pullingVal : 43200;
 
-            settings.themeColor = document.getElementById("themeColor").value;
-            settings.formatter = document.getElementById("formatter").value;
-            settings.icon = document.getElementById("icon").value;
+            settings.themeColor = currentTheme;
+            settings.formatter = $("formatter").value;
+            settings.icon = $("icon").value;
 
             if (websocket && uuid) {
                 websocket.send(JSON.stringify({
@@ -380,14 +610,33 @@
         }
 
         document.addEventListener("DOMContentLoaded", function () {
-            ["url", "jsonPath", "selector", "label", "headers", "pulling", "themeColor", "formatter", "icon"].forEach(function (id) {
-                document.getElementById(id).addEventListener("change", saveSettings);
+            buildSwatches();
+
+            ["url", "label", "jsonPath", "selector"].forEach(function (id) {
+                $(id).addEventListener("input", function () { validate(); updatePreview(); });
             });
+            ["formatter", "icon"].forEach(function (id) {
+                $(id).addEventListener("change", updatePreview);
+            });
+            $("headers").addEventListener("input", validate);
+            $("pulling").addEventListener("input", updateIntervalHint);
+
+            ["url", "jsonPath", "selector", "label", "headers", "pulling", "formatter", "icon"].forEach(function (id) {
+                $(id).addEventListener("change", saveSettings);
+            });
+
             document.querySelectorAll(".tab").forEach(function (el) {
                 el.addEventListener("click", function () { setTab(el.dataset.tab); });
             });
             document.querySelectorAll("#mode button").forEach(function (el) {
                 el.addEventListener("click", function () { setMode(el.dataset.mode, true); });
+            });
+            document.querySelectorAll("#presets .chip").forEach(function (el) {
+                el.addEventListener("click", function () {
+                    $("pulling").value = el.dataset.sec;
+                    updateIntervalHint();
+                    saveSettings();
+                });
             });
             document.querySelectorAll(".footer a").forEach(function (el) {
                 el.addEventListener("click", function (e) {
@@ -395,6 +644,7 @@
                     openUrl(el.dataset.url);
                 });
             });
+
             applySettings();
         });
     </script>
