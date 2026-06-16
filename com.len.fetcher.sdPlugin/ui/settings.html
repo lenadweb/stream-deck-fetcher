@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+    <title>Fetcher Settings</title>
+    <meta charset="utf-8" />
+    <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #2d2d2d;
+            color: #d8d8d8;
+        }
+        .container {
+            padding: 8px;
+        }
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #1a1a1a;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        select {
+            width: 100%;
+            height: 30px;
+            background-color: #1a1a1a;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 4px;
+        }
+        .footer {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px solid #3a3a3a;
+            text-align: center;
+            font-size: 11px;
+        }
+        .footer a {
+            color: #06b6d4;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <sdpi-item label="URL">
+            <sdpi-textfield id="url" placeholder="https://api.example.com/data"></sdpi-textfield>
+        </sdpi-item>
+
+        <sdpi-item label="Headers">
+            <textarea id="headers" rows="3" placeholder='{"Authorization": "Bearer token"}'></textarea>
+        </sdpi-item>
+
+        <sdpi-item label="JSON Path">
+            <sdpi-textfield id="jsonPath" placeholder="data.value"></sdpi-textfield>
+        </sdpi-item>
+
+        <sdpi-item label="Label">
+            <sdpi-textfield id="label" placeholder="My Metric"></sdpi-textfield>
+        </sdpi-item>
+
+        <sdpi-item label="Interval (s)">
+            <sdpi-textfield id="pulling" type="number" placeholder="43200"></sdpi-textfield>
+        </sdpi-item>
+
+        <sdpi-item label="Theme Color">
+            <select id="themeColor">
+                <option value="cyan">Cyan</option>
+                <option value="purple">Purple</option>
+                <option value="green">Green</option>
+                <option value="red">Red</option>
+                <option value="orange">Orange</option>
+                <option value="pink">Pink</option>
+                <option value="blue">Blue</option>
+                <option value="yellow">Yellow</option>
+                <option value="gray">Gray</option>
+                <option value="white">White</option>
+            </select>
+        </sdpi-item>
+
+        <sdpi-item label="Format">
+            <select id="formatter">
+                <option value="none">As Is (e.g. 12.34)</option>
+                <option value="integer">Round to Integer (e.g. 12)</option>
+                <option value="percent">Percentage (e.g. 85%)</option>
+                <option value="currency">Currency USD (e.g. $12.50)</option>
+                <option value="currency_eur">Currency EUR (e.g. 12.50 €)</option>
+                <option value="abbreviate">Abbreviate (e.g. 12.5k / 2.5M)</option>
+                <option value="boolean_status">On / Off (Boolean status)</option>
+                <option value="uppercase">UPPERCASE (e.g. OK)</option>
+                <option value="lowercase">lowercase (e.g. ok)</option>
+            </select>
+        </sdpi-item>
+
+        <sdpi-item label="Icon">
+            <select id="icon">
+                <option value="none">None</option>
+                <option value="server">Server</option>
+                <option value="database">Database</option>
+                <option value="cloud">Cloud</option>
+                <option value="cpu">CPU</option>
+                <option value="hardDrive">Hard Drive</option>
+                <option value="globe">Globe</option>
+                <option value="activity">Activity</option>
+                <option value="bell">Alert / Bell</option>
+                <option value="check">Checkmark</option>
+                <option value="alert">Warning</option>
+                <option value="clock">Clock</option>
+                <option value="dollar">Dollar</option>
+                <option value="euro">Euro</option>
+                <option value="percent">Percent</option>
+                <option value="user">User</option>
+                <option value="heart">Heart</option>
+                <option value="star">Star</option>
+                <option value="eye">Eye</option>
+                <option value="lock">Lock</option>
+                <option value="key">Key</option>
+                <option value="settings">Settings</option>
+                <option value="wifi">WiFi</option>
+                <option value="rotateCw">Sync</option>
+                <option value="terminal">Terminal</option>
+                <option value="code">Code</option>
+                <option value="info">Info</option>
+                <option value="help">Help</option>
+                <option value="search">Search</option>
+                <option value="play">Play</option>
+                <option value="pause">Pause</option>
+                <option value="square">Stop</option>
+                <option value="shield">Shield</option>
+                <option value="thermometer">Thermometer</option>
+                <option value="sun">Sun</option>
+                <option value="moon">Moon</option>
+                <option value="trendingUp">Trending Up</option>
+                <option value="trendingDown">Trending Down</option>
+                <option value="download">Download</option>
+                <option value="upload">Upload</option>
+                <option value="mail">Mail</option>
+                <option value="phone">Phone</option>
+                <option value="mapPin">Map Pin</option>
+                <option value="volume">Volume</option>
+                <option value="battery">Battery</option>
+                <option value="trash">Trash</option>
+                <option value="edit">Edit</option>
+            </select>
+        </sdpi-item>
+
+        <div class="footer">
+            <a href="https://github.com/lenadweb/stream-deck-json-fetcher" target="_blank" rel="noopener noreferrer">View on GitHub — Open Source (MIT)</a>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let uuid = null;
+        let settings = {};
+
+        function connectElgatoStreamDeckSocket(port, uuidValue, registerEvent, info, actionInfo) {
+            uuid = uuidValue;
+
+            if (actionInfo) {
+                const parsed = JSON.parse(actionInfo);
+                settings = parsed?.payload?.settings || {};
+            }
+
+            websocket = new WebSocket("ws://127.0.0.1:" + port);
+
+            websocket.onopen = function () {
+                websocket.send(JSON.stringify({ event: registerEvent, uuid: uuid }));
+                applySettings();
+            };
+
+            websocket.onmessage = function (evt) {
+                const data = JSON.parse(evt.data);
+                if (data.event === "didReceiveSettings") {
+                    settings = data.payload?.settings || {};
+                    applySettings();
+                }
+            };
+        }
+
+        function applySettings() {
+            document.getElementById("url").value = settings.url || "";
+            document.getElementById("headers").value = settings.headers || "";
+            document.getElementById("jsonPath").value = settings.jsonPath || "";
+            document.getElementById("label").value = settings.label || "";
+            document.getElementById("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
+            document.getElementById("themeColor").value = settings.themeColor || "cyan";
+            document.getElementById("formatter").value = settings.formatter || "none";
+            document.getElementById("icon").value = settings.icon || "none";
+        }
+
+        let saveTimer = null;
+        function saveSettings() {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(commitSettings, 300);
+        }
+
+        function commitSettings() {
+            settings.url = document.getElementById("url").value.trim();
+            settings.headers = document.getElementById("headers").value.trim();
+            settings.jsonPath = document.getElementById("jsonPath").value.trim();
+            settings.label = document.getElementById("label").value.trim();
+            
+            const pullingVal = parseInt(document.getElementById("pulling").value, 10);
+            settings.pulling = !isNaN(pullingVal) ? pullingVal : 43200;
+            
+            settings.themeColor = document.getElementById("themeColor").value;
+            settings.formatter = document.getElementById("formatter").value;
+            settings.icon = document.getElementById("icon").value;
+
+            if (websocket && uuid) {
+                websocket.send(JSON.stringify({
+                    event: "setSettings",
+                    context: uuid,
+                    payload: settings,
+                }));
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("url").addEventListener("change", saveSettings);
+            document.getElementById("headers").addEventListener("change", saveSettings);
+            document.getElementById("jsonPath").addEventListener("change", saveSettings);
+            document.getElementById("label").addEventListener("change", saveSettings);
+            document.getElementById("pulling").addEventListener("change", saveSettings);
+            document.getElementById("themeColor").addEventListener("change", saveSettings);
+            document.getElementById("formatter").addEventListener("change", saveSettings);
+            document.getElementById("icon").addEventListener("change", saveSettings);
+            applySettings();
+        });
+    </script>
+</body>
+
+</html>
