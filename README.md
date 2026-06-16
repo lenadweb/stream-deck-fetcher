@@ -31,7 +31,7 @@ The Property Inspector is organised into three tabs:
 
 | Setting | Description |
 | --- | --- |
-| **Label** | Custom label. If empty, the URL hostname is used. |
+| **Label** | Custom label. If empty, no label is shown. |
 | **Format** | How the resolved value is displayed. |
 | **Icon** | Optional icon shown beside the value. |
 | **Theme Color** | Accent color for the rendered tile. |
@@ -59,4 +59,4 @@ npm run watch      # rebuild and restart the plugin on change
 
 [MIT](LICENSE) © lenadweb
 
-Source: https://github.com/lenadweb/stream-deck-json-fetcher
+Source: https://github.com/lenadweb/stream-deck-fetcher

@@ -182,33 +182,37 @@ export class ProgressBarRenderer {
         let elements = `<defs>${bgGrad}${neonGrad}</defs>`;
         elements += `<rect width="200" height="100" fill="url(#bg)" />`;
         
-        const escapedLabel = this.escape(label.toUpperCase());
-        elements += `<text x="100" y="28" font-family="system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5" fill="#94a3b8" text-anchor="middle">${escapedLabel}</text>`;
-        
+        const hasLabel = label.trim().length > 0;
+        if (hasLabel) {
+            const escapedLabel = this.escape(label.toUpperCase());
+            elements += `<text x="100" y="28" font-family="system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5" fill="#94a3b8" text-anchor="middle">${escapedLabel}</text>`;
+        }
+
         const hasIcon = icon && icon !== "none" && lucideIcons[icon] !== undefined;
         const textLimit = hasIcon ? 142 : 180;
         const maxFontSize = 38;
         const fontSize = Math.max(14, Math.min(maxFontSize, Math.floor(textLimit / (value.length * 0.55 || 1))));
         const escapedValue = this.escape(value);
         const valueColor = isError ? "#ef4444" : colors.start;
-        
+        const centerY = hasLabel ? 64 : 50;
+
         if (hasIcon) {
             const iconSize = 30;
             const gap = 8;
             const textW = value.length * fontSize * 0.55;
             const totalW = iconSize + gap + textW;
             const startX = Math.max(15, 100 - totalW / 2);
-            
+
             const iconColor = isError ? "#ef4444" : colors.start;
             const iconSvg = this.getIcon(icon, iconSize, iconColor);
-            const iconY = 64 - iconSize / 2;
+            const iconY = centerY - iconSize / 2;
             elements += `<g transform="translate(${this.round(startX)} ${this.round(iconY)})">${iconSvg}</g>`;
-            
+
             const textX = startX + iconSize + gap;
-            const textY = 64 + fontSize * 0.35;
+            const textY = centerY + fontSize * 0.35;
             elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="start">${escapedValue}</text>`;
         } else {
-            const textY = 64 + fontSize * 0.35;
+            const textY = centerY + fontSize * 0.35;
             elements += `<text x="100" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="middle">${escapedValue}</text>`;
         }
         return elements;
