@@ -3,14 +3,14 @@ const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 200;
 
 export interface FetchResult {
-    data?: unknown;
+    text?: string;
     error?: string;
     fromCache: boolean;
 }
 
 interface CacheEntry {
     timestamp: number;
-    data?: unknown;
+    text?: string;
     error?: string;
     inflight?: Promise<FetchResult>;
 }
@@ -32,13 +32,13 @@ export class FetchCache {
         }
 
         if (entry && entry.timestamp > 0 && now - entry.timestamp < maxAgeMs) {
-            return { data: entry.data, error: entry.error, fromCache: true };
+            return { text: entry.text, error: entry.error, fromCache: true };
         }
 
         const inflight = this.doFetch(url, headers);
         this.store.set(key, {
             timestamp: entry?.timestamp ?? 0,
-            data: entry?.data,
+            text: entry?.text,
             error: entry?.error,
             inflight,
         });
@@ -47,7 +47,7 @@ export class FetchCache {
             const result = await inflight;
             this.store.set(key, {
                 timestamp: Date.now(),
-                data: result.data,
+                text: result.text,
                 error: result.error,
             });
             return result;
@@ -83,11 +83,7 @@ export class FetchCache {
                 return { error: "Response too large", fromCache: false };
             }
 
-            try {
-                return { data: JSON.parse(text), fromCache: false };
-            } catch {
-                return { error: "Invalid JSON", fromCache: false };
-            }
+            return { text, fromCache: false };
         } catch (err: unknown) {
             const name = (err as { name?: string })?.name;
             return {
