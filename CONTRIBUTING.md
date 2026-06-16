@@ -1,4 +1,4 @@
-# Contributing to JSON Fetcher Stream Deck Plugin
+# Contributing to Fetcher: JSON & HTML Monitor
 
 Thank you for your interest in contributing to this project! Here are the guidelines to help you get started.
 

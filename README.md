@@ -1,4 +1,4 @@
-# JSON Fetcher — Stream Deck Plugin
+# Fetcher: JSON & HTML Monitor
 
 A generic Stream Deck plugin that fetches a JSON payload from any HTTP/HTTPS endpoint, extracts a value via a JSON path, and displays it on keys and dials.
 

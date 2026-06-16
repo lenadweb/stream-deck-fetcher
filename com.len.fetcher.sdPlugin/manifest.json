@@ -1,11 +1,11 @@
 {
-  "Name": "JSON Fetcher",
+  "Name": "Fetcher: JSON & HTML Monitor",
   "Version": "0.2.1.0",
   "Author": "lenadweb",
   "URL": "https://github.com/lenadweb/stream-deck-fetcher",
   "Actions": [
     {
-      "Name": "JSON Fetcher",
+      "Name": "Fetcher: JSON & HTML Monitor",
       "UUID": "com.len.fetcher.action",
       "Icon": "imgs/actions/counter/icon",
       "Tooltip": "Fetches and displays JSON value from a URL.",
@@ -32,7 +32,7 @@
       ]
     }
   ],
-  "Category": "JSON Fetcher",
+  "Category": "Fetcher: JSON & HTML Monitor",
   "CategoryIcon": "imgs/plugin/category-icon",
   "CodePath": "bin/plugin.js",
   "Description": "Generic Stream Deck plugin to fetch JSON and extract a value via JSON path to display on keys or dials.",

@@ -1,6 +1,6 @@
 # Examples
 
-100+ real, useful (and a few delightfully weird) things you can put on a Stream Deck key or dial with JSON Fetcher.
+100+ real, useful (and a few delightfully weird) things you can put on a Stream Deck key or dial with Fetcher: JSON & HTML Monitor.
 
 Each entry lists the **URL**, the field to extract (**JSON Path** or **CSS Selector**), and a suggested **Format** / **Icon**. Replace placeholders like `<owner>/<repo>`, `<user>`, `<pkg>`, `<token>`, `<key>` with your own values.
 
