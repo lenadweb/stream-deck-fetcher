@@ -11,11 +11,10 @@ import { FetcherSettings } from "../interfaces/settings";
 import { ProgressBarRenderer } from "../ui/progress-bar-renderer";
 import { FetchCache } from "../services/fetch-cache";
 
-interface RenderState {
-    value: string;
+interface CachedValue {
+    raw: unknown;
     isError: boolean;
-    label: string;
-    icon: string;
+    error?: string;
 }
 
 @action({ UUID: "com.len.fetcher.action" })
@@ -26,14 +25,14 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
 
     private readonly intervals = new Map<string, NodeJS.Timeout>();
     private readonly controllers = new Map<string, string>();
-    private readonly lastResults = new Map<string, RenderState>();
+    private readonly values = new Map<string, CachedValue>();
     private readonly lastManualFetch = new Map<string, number>();
     private readonly renderer = new ProgressBarRenderer();
     private readonly cache = new FetchCache();
 
     override async onWillAppear(ev: WillAppearEvent<FetcherSettings>): Promise<void> {
         this.controllers.set(ev.action.id, ev.payload.controller);
-        await this.redraw(ev);
+        await this.paint(ev, (ev.payload?.settings ?? {}) as FetcherSettings);
         this.startMonitoring(ev);
     }
 
@@ -44,6 +43,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
     }
 
     override onDidReceiveSettings(ev: DidReceiveSettingsEvent<FetcherSettings>): void {
+        void this.paint(ev, (ev.payload?.settings ?? {}) as FetcherSettings);
         this.startMonitoring(ev);
     }
 
@@ -99,7 +99,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         const now = Date.now();
         const last = this.lastManualFetch.get(id) ?? 0;
         if (now - last < JsonFetcherAction.MANUAL_RATE_MS) {
-            void this.redraw(ev);
+            void this.paint(ev, (ev.payload?.settings ?? {}) as FetcherSettings);
             return;
         }
         this.lastManualFetch.set(id, now);
@@ -108,9 +108,12 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
 
     private async refresh(ev: any, maxAgeMs: number): Promise<void> {
         const settings = (ev.payload?.settings ?? {}) as FetcherSettings;
+        const themeColor = settings.themeColor || "cyan";
+        const label = this.deriveLabel(settings);
+        const icon = settings.icon || "none";
 
         if (!settings.url) {
-            await this.draw(ev, "Configure", "Fetcher", false, "none");
+            await this.draw(ev, "Configure", label, false, "none", themeColor);
             return;
         }
 
@@ -121,12 +124,9 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
                 throw new Error("Invalid protocol");
             }
         } catch {
-            await this.draw(ev, "Invalid URL", settings.label || "Fetcher", true, settings.icon || "none");
+            await this.draw(ev, "Invalid URL", label, true, icon, themeColor);
             return;
         }
-
-        const label = settings.label || parsedUrl.hostname;
-        const icon = settings.icon || "none";
 
         let headers: Record<string, string> | undefined;
         if (settings.headers && settings.headers.trim()) {
@@ -140,7 +140,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
                     headers[k] = String(v);
                 }
             } catch {
-                await this.draw(ev, "Headers Error", label, true, icon);
+                await this.draw(ev, "Headers Error", label, true, icon, themeColor);
                 return;
             }
         }
@@ -149,26 +149,55 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
 
         if (result.error) {
             streamDeck.logger.error(`Fetch failed for ${settings.url}: ${result.error}`);
-            this.lastResults.set(ev.action.id, { value: result.error, isError: true, label, icon });
-            await this.draw(ev, result.error, label, true, icon);
+            this.values.set(ev.action.id, { raw: undefined, isError: true, error: result.error });
+            await this.paint(ev, settings);
             return;
         }
 
-        let rawVal: unknown;
         try {
-            rawVal = settings.mode === "html"
+            const rawVal = settings.mode === "html"
                 ? this.extractHtml(result.text || "", settings.selector || "")
                 : this.extractJson(result.text || "", settings.jsonPath || "");
+            this.values.set(ev.action.id, { raw: rawVal, isError: false });
         } catch (err: any) {
-            const msg = err?.message || "Parse error";
-            this.lastResults.set(ev.action.id, { value: msg, isError: true, label, icon });
-            await this.draw(ev, msg, label, true, icon);
+            this.values.set(ev.action.id, { raw: undefined, isError: true, error: err?.message || "Parse error" });
+        }
+        await this.paint(ev, settings);
+    }
+
+    private async paint(ev: any, settings: FetcherSettings): Promise<void> {
+        const themeColor = settings.themeColor || "cyan";
+        const label = this.deriveLabel(settings);
+        const icon = settings.icon || "none";
+        const cached = this.values.get(ev.action.id);
+
+        if (!cached) {
+            const value = settings.url ? "Loading" : "Configure";
+            await this.draw(ev, value, label, false, settings.url ? icon : "none", themeColor);
             return;
         }
 
-        const displayValue = this.formatValue(rawVal, settings.formatter || "none");
-        this.lastResults.set(ev.action.id, { value: displayValue, isError: false, label, icon });
-        await this.draw(ev, displayValue, label, false, icon);
+        if (cached.isError) {
+            await this.draw(ev, cached.error || "Error", label, true, icon, themeColor);
+            return;
+        }
+
+        const displayValue = this.formatValue(cached.raw, settings.formatter || "none");
+        await this.draw(ev, displayValue, label, false, icon, themeColor);
+    }
+
+    private deriveLabel(settings: FetcherSettings): string {
+        if (settings.label) {
+            return settings.label;
+        }
+        if (settings.url) {
+            try {
+                return new URL(settings.url).hostname;
+            } catch {
+                return "Fetcher";
+            }
+        }
+        return "Fetcher";
     }
 
     private extractJson(text: string, path: string): unknown {
@@ -203,26 +232,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         return value === undefined || value === null ? null : value.trim();
     }
 
-    private async redraw(ev: any): Promise<void> {
-        const cached = this.lastResults.get(ev.action.id);
-        if (cached) {
-            await this.draw(ev, cached.value, cached.label, cached.isError, cached.icon);
-            return;
-        }
-        const settings = (ev.payload?.settings ?? {}) as FetcherSettings;
-        let label = settings.label || "Fetcher";
-        if (!settings.label && settings.url) {
-            try {
-                label = new URL(settings.url).hostname;
-            } catch {
-                label = settings.label || "Fetcher";
-            }
-        }
-        await this.draw(ev, "Loading", label, false, settings.icon || "none");
-    }
-
-    private async draw(ev: any, value: string, label: string, isError: boolean, icon: string): Promise<void> {
-        const themeColor = ev.payload?.settings?.themeColor || "cyan";
+    private async draw(ev: any, value: string, label: string, isError: boolean, icon: string, themeColor: string): Promise<void> {
         try {
             const svg = this.renderer.render(value, label, isError, icon, themeColor, 144, 144);
             const image = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
