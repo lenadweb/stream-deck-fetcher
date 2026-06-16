@@ -142,33 +142,19 @@ export class ProgressBarRenderer {
             elements += `<text x="72" y="28" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="1" fill="#94a3b8" text-anchor="middle">${escapedLabel}</text>`;
         }
 
-        const hasIcon = icon && icon !== "none" && lucideIcons[icon] !== undefined;
-        const textLimit = hasIcon ? 100 : 130;
-        const maxFontSize = 32;
-        const fontSize = Math.max(12, Math.min(maxFontSize, Math.floor(textLimit / (value.length * 0.55 || 1))));
-        const escapedValue = this.escape(value);
-        const valueColor = isError ? "#ef4444" : colors.start;
         const centerY = hasLabel ? 82 : 72;
-
-        if (hasIcon) {
-            const iconSize = 24;
-            const gap = 6;
-            const textW = value.length * fontSize * 0.55;
-            const totalW = iconSize + gap + textW;
-            const startX = Math.max(10, 72 - totalW / 2);
-
-            const iconColor = isError ? "#ef4444" : colors.start;
-            const iconSvg = this.getIcon(icon, iconSize, iconColor);
-            const iconY = centerY - iconSize / 2;
-            elements += `<g transform="translate(${this.round(startX)} ${this.round(iconY)})">${iconSvg}</g>`;
-
-            const textX = startX + iconSize + gap;
-            const textY = centerY + fontSize * 0.35;
-            elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="start">${escapedValue}</text>`;
-        } else {
-            const textY = centerY + fontSize * 0.35;
-            elements += `<text x="72" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="middle">${escapedValue}</text>`;
-        }
+        elements += this.renderContent(value, isError, icon, colors, {
+            cx: 72,
+            centerY,
+            minX: 10,
+            maxWidth: 130,
+            maxFont: 32,
+            minFont: 10,
+            iconSize: 24,
+            iconGap: 6,
+            maxHeight: hasLabel ? 92 : 120,
+            lineHeightFactor: 1.15,
+        });
         return elements;
     }
 
@@ -188,34 +174,109 @@ export class ProgressBarRenderer {
             elements += `<text x="100" y="28" font-family="system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5" fill="#94a3b8" text-anchor="middle">${escapedLabel}</text>`;
         }
 
-        const hasIcon = icon && icon !== "none" && lucideIcons[icon] !== undefined;
-        const textLimit = hasIcon ? 142 : 180;
-        const maxFontSize = 38;
-        const fontSize = Math.max(14, Math.min(maxFontSize, Math.floor(textLimit / (value.length * 0.55 || 1))));
-        const escapedValue = this.escape(value);
-        const valueColor = isError ? "#ef4444" : colors.start;
         const centerY = hasLabel ? 64 : 50;
-
-        if (hasIcon) {
-            const iconSize = 30;
-            const gap = 8;
-            const textW = value.length * fontSize * 0.55;
-            const totalW = iconSize + gap + textW;
-            const startX = Math.max(15, 100 - totalW / 2);
-
-            const iconColor = isError ? "#ef4444" : colors.start;
-            const iconSvg = this.getIcon(icon, iconSize, iconColor);
-            const iconY = centerY - iconSize / 2;
-            elements += `<g transform="translate(${this.round(startX)} ${this.round(iconY)})">${iconSvg}</g>`;
-
-            const textX = startX + iconSize + gap;
-            const textY = centerY + fontSize * 0.35;
-            elements += `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="start">${escapedValue}</text>`;
-        } else {
-            const textY = centerY + fontSize * 0.35;
-            elements += `<text x="100" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="middle">${escapedValue}</text>`;
-        }
+        elements += this.renderContent(value, isError, icon, colors, {
+            cx: 100,
+            centerY,
+            minX: 15,
+            maxWidth: 180,
+            maxFont: 38,
+            minFont: 12,
+            iconSize: 30,
+            iconGap: 8,
+            maxHeight: hasLabel ? 60 : 84,
+            lineHeightFactor: 1.15,
+        });
         return elements;
+    }
+
+    private renderContent(
+        value: string,
+        isError: boolean,
+        icon: string,
+        colors: { start: string; stop: string },
+        geo: {
+            cx: number;
+            centerY: number;
+            minX: number;
+            maxWidth: number;
+            maxFont: number;
+            minFont: number;
+            iconSize: number;
+            iconGap: number;
+            maxHeight: number;
+            lineHeightFactor: number;
+        }
+    ): string {
+        const charW = 0.55;
+        const valueColor = isError ? "#ef4444" : colors.start;
+        const hasIcon = !!icon && icon !== "none" && lucideIcons[icon] !== undefined;
+
+        const explicit = value.replace(/\\n/g, "\n").split("\n").map((s) => s.trim());
+
+        let fontSize = geo.maxFont;
+        let lines: string[] = explicit;
+        while (true) {
+            const reserved = hasIcon && explicit.length === 1 ? geo.iconSize + geo.iconGap : 0;
+            const avail = geo.maxWidth - reserved;
+            lines = [];
+            for (const ln of explicit) {
+                for (const w of this.wrapLine(ln, avail, fontSize, charW)) {
+                    lines.push(w);
+                }
+            }
+            const widthBudget = geo.maxWidth - (hasIcon && lines.length === 1 ? geo.iconSize + geo.iconGap : 0);
+            const widest = lines.reduce((m, l) => Math.max(m, l.length * fontSize * charW), 0);
+            const height = lines.length * fontSize * geo.lineHeightFactor;
+            if ((widest <= widthBudget && height <= geo.maxHeight) || fontSize <= geo.minFont) {
+                break;
+            }
+            fontSize--;
+        }
+
+        if (hasIcon && lines.length === 1) {
+            const text = lines[0];
+            const textW = text.length * fontSize * charW;
+            const totalW = geo.iconSize + geo.iconGap + textW;
+            const startX = Math.max(geo.minX, geo.cx - totalW / 2);
+            const iconColor = isError ? "#ef4444" : colors.start;
+            const iconSvg = this.getIcon(icon, geo.iconSize, iconColor);
+            const iconY = geo.centerY - geo.iconSize / 2;
+            const textX = startX + geo.iconSize + geo.iconGap;
+            const textY = geo.centerY + fontSize * 0.35;
+            return `<g transform="translate(${this.round(startX)} ${this.round(iconY)})">${iconSvg}</g>`
+                + `<text x="${this.round(textX)}" y="${this.round(textY)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="start">${this.escape(text)}</text>`;
+        }
+
+        const lineHeight = fontSize * geo.lineHeightFactor;
+        const totalH = lines.length * lineHeight;
+        let out = "";
+        for (let i = 0; i < lines.length; i++) {
+            const y = geo.centerY - totalH / 2 + lineHeight * (i + 0.5) + fontSize * 0.35;
+            out += `<text x="${geo.cx}" y="${this.round(y)}" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="700" fill="${valueColor}" text-anchor="middle">${this.escape(lines[i])}</text>`;
+        }
+        return out;
+    }
+
+    private wrapLine(line: string, maxWidth: number, fontSize: number, charW: number): string[] {
+        if (line === "") return [""];
+        const maxChars = Math.max(1, Math.floor(maxWidth / (fontSize * charW)));
+        const words = line.split(/\s+/).filter(Boolean);
+        if (words.length === 0) return [""];
+        const out: string[] = [];
+        let cur = "";
+        for (const w of words) {
+            if (!cur) {
+                cur = w;
+            } else if ((cur + " " + w).length <= maxChars) {
+                cur += " " + w;
+            } else {
+                out.push(cur);
+                cur = w;
+            }
+        }
+        if (cur) out.push(cur);
+        return out;
     }
 
     private escape(s: string): string {
