@@ -9,6 +9,7 @@
       "UUID": "com.len.fetcher.action",
       "Icon": "imgs/actions/counter/icon",
       "Tooltip": "Fetches and displays JSON value from a URL.",
+      "UserTitleEnabled": false,
       "PropertyInspectorPath": "ui/settings.html",
       "Controllers": [
         "Keypad",
@@ -26,8 +27,7 @@
       "States": [
         {
           "Image": "imgs/actions/counter/key",
-          "TitleAlignment": "middle",
-          "ShowTitle": false
+          "TitleAlignment": "middle"
         }
       ]
     }
