@@ -1,0 +1,13 @@
+# Node.js
+node_modules/
+
+# Stream Deck files
+*.sdPlugin/bin
+*.sdPlugin/logs
+/.idea
+.env
+com.len.limits.streamDeckPlugin
+tmp/
+.vscode/
+.agents/
+.preview/

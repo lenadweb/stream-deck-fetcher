@@ -1,0 +1,57 @@
+{
+  "Name": "JSON Fetcher",
+  "Version": "0.2.0",
+  "Author": "len",
+  "Actions": [
+    {
+      "Name": "JSON Fetcher",
+      "UUID": "com.len.fetcher.action",
+      "Icon": "imgs/actions/counter/icon",
+      "Tooltip": "Fetches and displays JSON value from a URL.",
+      "PropertyInspectorPath": "ui/settings.html",
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ],
+      "Encoder": {
+        "layout": "layouts/full-view.json",
+        "StackColor": "#8B5CF6",
+        "TriggerDescription": {
+          "Rotate": "Refresh",
+          "Touch": "Refresh",
+          "Push": "Refresh"
+        }
+      },
+      "States": [
+        {
+          "Image": "imgs/actions/counter/key",
+          "TitleAlignment": "middle"
+        }
+      ]
+    }
+  ],
+  "Category": "JSON Fetcher",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "CodePath": "bin/plugin.js",
+  "Description": "Generic Stream Deck plugin to fetch JSON and extract a value via JSON path to display on keys or dials.",
+  "Icon": "imgs/plugin/plugin-icon",
+  "SDKVersion": 3,
+  "Software": {
+    "MinimumVersion": "6.9"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "UUID": "com.len.fetcher"
+}
