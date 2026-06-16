@@ -208,7 +208,7 @@ export class ProgressBarRenderer {
             lineHeightFactor: number;
         }
     ): string {
-        const charW = 0.55;
+        const charW = 0.62;
         const valueColor = isError ? "#ef4444" : colors.start;
         const hasIcon = !!icon && icon !== "none" && lucideIcons[icon] !== undefined;
 
