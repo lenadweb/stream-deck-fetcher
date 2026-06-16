@@ -7,8 +7,8 @@ Thank you for your interest in contributing to this project! Here are the guidel
 1. **Fork the Repository:**
    Fork the repository on GitHub and clone your fork locally:
    ```bash
-   git clone https://github.com/your-username/stream-deck-json-fetcher.git
-   cd stream-deck-json-fetcher
+   git clone https://github.com/your-username/stream-deck-fetcher.git
+   cd stream-deck-fetcher
    ```
 
 2. **Install Dependencies:**

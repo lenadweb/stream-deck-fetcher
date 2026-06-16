@@ -11,12 +11,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lenadweb/stream-deck-json-fetcher.git"
+    "url": "git+https://github.com/lenadweb/stream-deck-fetcher.git"
   },
   "bugs": {
-    "url": "https://github.com/lenadweb/stream-deck-json-fetcher/issues"
+    "url": "https://github.com/lenadweb/stream-deck-fetcher/issues"
   },
-  "homepage": "https://github.com/lenadweb/stream-deck-json-fetcher#readme",
+  "homepage": "https://github.com/lenadweb/stream-deck-fetcher#readme",
   "author": "lenadweb <lenadweber@gmail.com>",
   "license": "MIT",
   "devDependencies": {
