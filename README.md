@@ -58,5 +58,3 @@ npm run watch      # rebuild and restart the plugin on change
 ## License
 
 [MIT](LICENSE) © lenadweb
-
-Source: https://github.com/lenadweb/stream-deck-fetcher
