@@ -109,6 +109,18 @@ const themeGradients: Record<string, { start: string; stop: string }> = {
     white: { start: "#f8fafc", stop: "#cbd5e1" }
 };
 
+/**
+ * Scales the *starting* font size only. The auto-fit loop still shrinks text
+ * down to `minFont`, so a larger setting can never push a value off the tile.
+ */
+const fontScales: Record<string, number> = {
+    xs: 0.7,
+    sm: 0.85,
+    md: 1,
+    lg: 1.2,
+    xl: 1.45
+};
+
 export class ProgressBarRenderer {
     render(
         value: string,
@@ -117,16 +129,18 @@ export class ProgressBarRenderer {
         icon: string,
         themeColor: string,
         width: number,
-        height: number
+        height: number,
+        fontSize = "md"
     ): string {
         const isDial = width === 200 && height === 100;
+        const scale = fontScales[fontSize] || 1;
         const body = isDial
-            ? this.renderDial(value, label, isError, icon, themeColor)
-            : this.renderKey(value, label, isError, icon, themeColor);
+            ? this.renderDial(value, label, isError, icon, themeColor, scale)
+            : this.renderKey(value, label, isError, icon, themeColor, scale);
         return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}</svg>`;
     }
 
-    private renderKey(value: string, label: string, isError: boolean, icon: string, themeColor: string): string {
+    private renderKey(value: string, label: string, isError: boolean, icon: string, themeColor: string, scale: number): string {
         const colors = themeGradients[themeColor] || themeGradients.cyan;
         const bgGrad = this.bgGradient(colors);
         const neonGrad = isError
@@ -148,7 +162,7 @@ export class ProgressBarRenderer {
             centerY,
             minX: 10,
             maxWidth: 130,
-            maxFont: 32,
+            maxFont: Math.round(32 * scale),
             minFont: 10,
             iconSize: 24,
             iconGap: 6,
@@ -158,7 +172,7 @@ export class ProgressBarRenderer {
         return elements;
     }
 
-    private renderDial(value: string, label: string, isError: boolean, icon: string, themeColor: string): string {
+    private renderDial(value: string, label: string, isError: boolean, icon: string, themeColor: string, scale: number): string {
         const colors = themeGradients[themeColor] || themeGradients.cyan;
         const bgGrad = this.bgGradient(colors);
         const neonGrad = isError
@@ -180,7 +194,7 @@ export class ProgressBarRenderer {
             centerY,
             minX: 15,
             maxWidth: 180,
-            maxFont: 38,
+            maxFont: Math.round(38 * scale),
             minFont: 12,
             iconSize: 30,
             iconGap: 8,
