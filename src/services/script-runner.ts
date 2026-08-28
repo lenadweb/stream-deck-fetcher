@@ -27,10 +27,23 @@ export class ScriptRunner {
         }
 
         const script = this.compile(code);
-        const context = createContext({
-            response: this.toResponse(text),
+        const response = this.toResponse(text);
+
+        const globals: Record<string, unknown> = {
+            response,
             console: this.makeConsole(),
-        });
+        };
+
+        // For HTML, also expose the browser-console spelling: `querySelectorAll(...)`
+        // and `document.querySelectorAll(...)`, not just `response.querySelectorAll(...)`.
+        if (this.isHtmlRoot(response)) {
+            const root = response as any;
+            globals.document = root;
+            globals.querySelector = (selector: string) => root.querySelector(selector);
+            globals.querySelectorAll = (selector: string) => root.querySelectorAll(selector);
+        }
+
+        const context = createContext(globals);
 
         try {
             return script.runInContext(context, { timeout: TIMEOUT_MS });
@@ -49,6 +62,10 @@ export class ScriptRunner {
         } catch {
             return parse(text);
         }
+    }
+
+    private isHtmlRoot(value: unknown): boolean {
+        return typeof (value as any)?.querySelectorAll === "function";
     }
 
     private compile(code: string): Script {
