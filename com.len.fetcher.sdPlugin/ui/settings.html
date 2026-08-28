@@ -103,6 +103,55 @@
             box-shadow: 0 0 0 3px rgba(239, 68, 68, .15);
         }
         textarea { font-family: ui-monospace, Menlo, Consolas, monospace; resize: vertical; min-height: 58px; }
+        /* Code editor: a highlighted <pre> sitting under a transparent textarea.
+           Both must share every metric or the caret drifts off the glyphs. */
+        .editor { position: relative; }
+        .editor pre, .editor textarea {
+            margin: 0;
+            padding: 8px 9px;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            tab-size: 2;
+        }
+        .editor pre {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+            color: var(--text);
+            background: var(--panel-input);
+            border-color: var(--border-strong);
+        }
+        .editor textarea {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            min-height: 168px;
+            resize: vertical;
+            background: transparent;
+            color: transparent;
+            caret-color: #fff;
+            border-color: transparent;
+            overflow: auto;
+        }
+        .editor textarea::selection { background: rgba(6, 182, 212, .35); }
+        .editor textarea:focus { border-color: transparent; box-shadow: none; }
+        .editor textarea:focus + pre { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(6, 182, 212, .18); }
+        .editor textarea.invalid + pre { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239, 68, 68, .15); }
+
+        .t-c { color: #7f848e; font-style: italic; }
+        .t-s { color: #98c379; }
+        .t-k { color: #c678dd; }
+        .t-n { color: #d19a66; }
+        .t-b { color: #e5c07b; }
+        .t-f { color: #61afef; }
         select {
             height: 34px;
             appearance: none;
@@ -165,6 +214,45 @@
         .chip:hover { color: var(--text); border-color: var(--accent); }
         .chip.active { background: var(--accent); color: #06222a; border-color: var(--accent); }
 
+        /* Test button + result */
+        .btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--panel-input);
+            border: 1px solid var(--border-strong);
+            border-radius: 5px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+        .btn:hover:not(:disabled) { border-color: var(--accent); color: #fff; }
+        .btn:disabled { opacity: .55; cursor: default; }
+        .result {
+            margin-top: 8px;
+            padding: 8px 9px;
+            border: 1px solid var(--border-strong);
+            border-left-width: 3px;
+            border-radius: 5px;
+            background: var(--panel-input);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .result.ok { border-left-color: #10b981; }
+        .result.fail { border-left-color: var(--danger); color: #fca5a5; }
+        .result .meta {
+            display: block;
+            margin-top: 5px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
         .footer {
             display: flex;
             justify-content: space-between;
@@ -200,6 +288,7 @@
                 <div class="segmented" id="mode">
                     <button type="button" data-mode="json">JSON</button>
                     <button type="button" data-mode="html">HTML</button>
+                    <button type="button" data-mode="js">JS</button>
                 </div>
             </div>
 
@@ -213,6 +302,25 @@
                 <label for="selector">CSS Selector</label>
                 <input id="selector" type="text" placeholder=".price" />
                 <div class="hint">First match's text. Read an attribute with <code>selector@attr</code>. Combine selectors with <code>{...}</code>, e.g. <code>{.used}/{.total}</code>.</div>
+            </div>
+
+            <div class="field hidden" id="field-script">
+                <label for="script">Handler</label>
+                <div class="editor">
+                    <textarea id="script" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+                    <pre id="script-hl" aria-hidden="true"></pre>
+                </div>
+                <div class="hint">
+                    <code>response</code> is the parsed JSON, or the HTML root with
+                    <code>querySelector()</code> / <code>querySelectorAll()</code> when the body isn't JSON.
+                    Return the text to display.
+                </div>
+                <div class="error-msg" id="err-script">Enter a handler.</div>
+            </div>
+
+            <div class="field">
+                <button type="button" class="btn" id="test-btn">Test</button>
+                <div class="result hidden" id="test-result"></div>
             </div>
         </div>
 
@@ -292,6 +400,18 @@
             </div>
 
             <div class="field">
+                <label for="fontSize">Value Size</label>
+                <select id="fontSize">
+                    <option value="xs">Extra Small</option>
+                    <option value="sm">Small</option>
+                    <option value="md">Medium (default)</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">Extra Large</option>
+                </select>
+                <div class="hint">Starting size. Long values still shrink to fit the tile.</div>
+            </div>
+
+            <div class="field">
                 <label>Theme Color</label>
                 <div class="swatches" id="swatches"></div>
                 <div class="hint">Colors the value text, icon and background.</div>
@@ -358,7 +478,21 @@
 
         let websocket = null;
         let uuid = null;
+        let actionUUID = null;
+        let testTimer = null;
         let settings = {};
+        const MODES = ["json", "html", "js"];
+        const DEFAULT_SCRIPT = "function handler(response) {\n  return response;\n}\n";
+
+        // Ordered alternation: comments, strings, keywords, numbers, globals, calls.
+        const HL_RE = new RegExp([
+            "(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)",
+            "('(?:\\\\.|[^'\\\\\\n])*'|\"(?:\\\\.|[^\"\\\\\\n])*\"|`(?:\\\\.|[^`\\\\])*`)",
+            "\\b(function|return|const|let|var|if|else|for|while|of|in|new|typeof|instanceof|null|undefined|true|false|try|catch|finally|throw|switch|case|default|break|continue|do|delete|void|class|this)\\b",
+            "\\b(\\d+(?:\\.\\d+)?)\\b",
+            "\\b(response|console|Math|JSON|Date|Number|String|Array|Object|RegExp|parseInt|parseFloat|isNaN)\\b",
+            "\\b([A-Za-z_$][\\w$]*)(?=\\s*\\()"
+        ].join("|"), "g");
         let currentMode = "json";
         let currentTheme = "cyan";
 
@@ -370,6 +504,7 @@
             if (actionInfo) {
                 const parsed = JSON.parse(actionInfo);
                 settings = parsed?.payload?.settings || {};
+                actionUUID = parsed?.action || null;
             }
 
             websocket = new WebSocket("ws://127.0.0.1:" + port);
@@ -384,6 +519,8 @@
                 if (data.event === "didReceiveSettings") {
                     settings = data.payload?.settings || {};
                     applySettings();
+                } else if (data.event === "sendToPropertyInspector" && data.payload?.event === "testResult") {
+                    showTestResult(data.payload);
                 }
             };
         }
@@ -403,6 +540,53 @@
             });
         }
 
+        function escapeHtml(text) {
+            return text.replace(/[&<>]/g, function (c) {
+                return c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;";
+            });
+        }
+
+        function highlight() {
+            const code = $("script").value;
+            const classes = ["t-c", "t-s", "t-k", "t-n", "t-b", "t-f"];
+            let out = "";
+            let last = 0;
+            let m;
+            HL_RE.lastIndex = 0;
+            while ((m = HL_RE.exec(code)) !== null) {
+                out += escapeHtml(code.slice(last, m.index));
+                let cls = "t-f";
+                for (let g = 1; g <= 6; g++) {
+                    if (m[g] !== undefined) { cls = classes[g - 1]; break; }
+                }
+                out += "<span class=\"" + cls + "\">" + escapeHtml(m[0]) + "</span>";
+                last = m.index + m[0].length;
+            }
+            out += escapeHtml(code.slice(last));
+            // Trailing newline keeps the last line's height in sync with the textarea.
+            $("script-hl").innerHTML = out + "\n";
+            $("script-hl").scrollTop = $("script").scrollTop;
+        }
+
+        /** Mirrors the plugin's two accepted handler shapes. Returns "" when valid. */
+        function scriptSyntaxError(code) {
+            try {
+                new Function("return (" + code + "\n);");
+                return "";
+            } catch (exprErr) {
+                try {
+                    new Function(code + "\n;return handler;");
+                } catch (declErr) {
+                    return exprErr.message;
+                }
+                // Not an expression, so the plugin looks for a `handler` binding.
+                if (!/\bfunction\s+handler\b/.test(code) && !/\bhandler\s*=/.test(code)) {
+                    return "Define a function named handler.";
+                }
+                return "";
+            }
+        }
+
         function setTheme(name, save) {
             currentTheme = THEMES[name] ? name : "cyan";
             document.querySelectorAll(".swatch").forEach(function (el) {
@@ -415,6 +599,8 @@
             $("url").value = settings.url || "";
             $("jsonPath").value = settings.jsonPath || "";
             $("selector").value = settings.selector || "";
+            $("script").value = settings.script || DEFAULT_SCRIPT;
+            highlight();
             $("label").value = settings.label || "";
             $("headers").value = settings.headers || "";
             $("body").value = settings.body || "";
@@ -422,8 +608,9 @@
             $("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
             $("formatter").value = settings.formatter || "none";
             $("icon").value = settings.icon || "none";
+            $("fontSize").value = settings.fontSize || "md";
             setTheme(settings.themeColor || "cyan", false);
-            setMode(settings.mode === "html" ? "html" : "json", false);
+            setMode(MODES.indexOf(settings.mode) !== -1 ? settings.mode : "json", false);
             updateBodyVisibility();
             validate();
             updateIntervalHint();
@@ -440,6 +627,8 @@
             });
             $("field-jsonPath").classList.toggle("hidden", mode !== "json");
             $("field-selector").classList.toggle("hidden", mode !== "html");
+            $("field-script").classList.toggle("hidden", mode !== "js");
+            validate();
             if (save) { saveSettings(); }
         }
 
@@ -496,6 +685,16 @@
             $("err-headers").style.display = headersBad ? "block" : "none";
             if (headersBad) { ok = false; }
 
+            let scriptErr = "";
+            if (currentMode === "js") {
+                const code = $("script").value.trim();
+                scriptErr = code ? scriptSyntaxError(code) : "Enter a handler.";
+            }
+            $("script").classList.toggle("invalid", !!scriptErr);
+            $("err-script").textContent = scriptErr;
+            $("err-script").style.display = scriptErr ? "block" : "none";
+            if (scriptErr) { ok = false; }
+
             return ok;
         }
 
@@ -510,6 +709,7 @@
             settings.mode = currentMode;
             settings.jsonPath = $("jsonPath").value.trim();
             settings.selector = $("selector").value.trim();
+            settings.script = $("script").value;
             settings.label = $("label").value.trim();
             settings.headers = $("headers").value.trim();
             settings.method = $("method").value;
@@ -521,6 +721,7 @@
             settings.themeColor = currentTheme;
             settings.formatter = $("formatter").value;
             settings.icon = $("icon").value;
+            settings.fontSize = $("fontSize").value;
 
             if (websocket && uuid) {
                 websocket.send(JSON.stringify({
@@ -529,6 +730,72 @@
                     payload: settings,
                 }));
             }
+        }
+
+        /** Test against what is typed right now, not the last committed settings. */
+        function currentSettings() {
+            const pullingVal = parseInt($("pulling").value, 10);
+            return {
+                url: $("url").value.trim(),
+                mode: currentMode,
+                jsonPath: $("jsonPath").value.trim(),
+                selector: $("selector").value.trim(),
+                script: $("script").value,
+                method: $("method").value,
+                body: $("body").value.trim(),
+                headers: $("headers").value.trim(),
+                formatter: $("formatter").value,
+                pulling: !isNaN(pullingVal) ? pullingVal : 43200,
+            };
+        }
+
+        function setTestPending(pending) {
+            $("test-btn").disabled = pending;
+            $("test-btn").textContent = pending ? "Testing…" : "Test";
+        }
+
+        function showTestResult(payload) {
+            clearTimeout(testTimer);
+            setTestPending(false);
+
+            const box = $("test-result");
+            box.classList.remove("hidden", "ok", "fail");
+            box.classList.add(payload.ok ? "ok" : "fail");
+
+            const bits = [];
+            if (typeof payload.elapsed === "number") {
+                bits.push(payload.cached ? "cached" : payload.elapsed + " ms");
+            }
+
+            box.textContent = payload.ok ? String(payload.value) : String(payload.error);
+            if (bits.length) {
+                const meta = document.createElement("span");
+                meta.className = "meta";
+                meta.textContent = bits.join(" · ");
+                box.appendChild(meta);
+            }
+        }
+
+        function runTest() {
+            if (!websocket || !uuid || !actionUUID) { return; }
+            if (!validate()) {
+                showTestResult({ ok: false, error: "Fix the highlighted fields first." });
+                return;
+            }
+
+            setTestPending(true);
+            websocket.send(JSON.stringify({
+                event: "sendToPlugin",
+                action: actionUUID,
+                context: uuid,
+                payload: { event: "test", settings: currentSettings() },
+            }));
+
+            // The fetch itself times out at 8 s; don't leave the button stuck if no reply lands.
+            clearTimeout(testTimer);
+            testTimer = setTimeout(function () {
+                showTestResult({ ok: false, error: "No response from the plugin." });
+            }, 12000);
         }
 
         function openUrl(url) {
@@ -540,14 +807,29 @@
         document.addEventListener("DOMContentLoaded", function () {
             buildSwatches();
 
-            ["url", "headers"].forEach(function (id) {
+            ["url", "headers", "script"].forEach(function (id) {
                 $(id).addEventListener("input", validate);
             });
             $("pulling").addEventListener("input", updateIntervalHint);
             $("method").addEventListener("change", function () { updateBodyVisibility(); saveSettings(); });
 
-            ["url", "jsonPath", "selector", "label", "headers", "body", "pulling", "formatter", "icon"].forEach(function (id) {
+            ["url", "jsonPath", "selector", "script", "label", "headers", "body", "pulling", "formatter", "icon", "fontSize"].forEach(function (id) {
                 $(id).addEventListener("change", saveSettings);
+            });
+
+            $("test-btn").addEventListener("click", runTest);
+            $("script").addEventListener("input", highlight);
+            $("script").addEventListener("scroll", function () {
+                $("script-hl").scrollTop = $("script").scrollTop;
+            });
+            $("script").addEventListener("keydown", function (e) {
+                if (e.key !== "Tab") { return; }
+                e.preventDefault();
+                const el = e.target;
+                const start = el.selectionStart;
+                el.value = el.value.slice(0, start) + "  " + el.value.slice(el.selectionEnd);
+                el.selectionStart = el.selectionEnd = start + 2;
+                highlight();
             });
 
             document.querySelectorAll(".tab").forEach(function (el) {
