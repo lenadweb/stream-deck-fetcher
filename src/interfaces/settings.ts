@@ -5,9 +5,11 @@ export interface FetcherSettings {
     mode?: string;
     jsonPath?: string;
     selector?: string;
+    script?: string;
     label?: string;
     icon?: string;
     themeColor?: string;
+    fontSize?: string;
     formatter?: string;
     headers?: string;
     pulling?: number;

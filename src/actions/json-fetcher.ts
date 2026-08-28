@@ -5,11 +5,13 @@ import streamDeck, {
     WillAppearEvent,
     WillDisappearEvent,
     DidReceiveSettingsEvent,
+    SendToPluginEvent,
 } from "@elgato/streamdeck";
 import { parse } from "node-html-parser";
 import { FetcherSettings } from "../interfaces/settings";
 import { ProgressBarRenderer } from "../ui/progress-bar-renderer";
 import { FetchCache } from "../services/fetch-cache";
+import { ScriptRunner } from "../services/script-runner";
 
 interface CachedValue {
     value: string;
@@ -21,6 +23,8 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
     private static readonly MIN_INTERVAL_S = 5;
     private static readonly DEFAULT_INTERVAL_S = 12 * 60 * 60;
     private static readonly MANUAL_RATE_MS = 2000;
+    /** Tests reuse a recent response so repeated presses iterate on the handler, not the endpoint. */
+    private static readonly TEST_MAX_AGE_MS = 30000;
 
     private readonly intervals = new Map<string, NodeJS.Timeout>();
     private readonly controllers = new Map<string, string>();
@@ -28,6 +32,10 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
     private readonly lastManualFetch = new Map<string, number>();
     private readonly renderer = new ProgressBarRenderer();
     private readonly cache = new FetchCache();
+    private readonly scripts = new ScriptRunner((level, args) => {
+        const text = args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ");
+        streamDeck.logger[level === "log" ? "info" : level](`[handler] ${text}`);
+    });
 
     override async onWillAppear(ev: WillAppearEvent<FetcherSettings>): Promise<void> {
         this.controllers.set(ev.action.id, ev.payload.controller);
@@ -60,6 +68,62 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
 
     override onTouchTap(ev: any): void {
         this.manualRefresh(ev);
+    }
+
+    override async onSendToPlugin(ev: SendToPluginEvent<any, FetcherSettings>): Promise<void> {
+        if ((ev.payload as any)?.event !== "test") {
+            return;
+        }
+        const settings = ((ev.payload as any).settings ?? {}) as FetcherSettings;
+        await streamDeck.ui.sendToPropertyInspector({
+            event: "testResult",
+            ...(await this.runTest(settings)),
+        });
+    }
+
+    private async runTest(settings: FetcherSettings): Promise<Record<string, any>> {
+        if (!settings.url) {
+            return { ok: false, error: "Enter a URL first." };
+        }
+
+        try {
+            const parsed = new URL(settings.url);
+            if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+                throw new Error("bad protocol");
+            }
+        } catch {
+            return { ok: false, error: "Invalid URL." };
+        }
+
+        let headers: Record<string, string> | undefined;
+        try {
+            headers = this.parseHeaders(settings);
+        } catch {
+            return { ok: false, error: "Headers must be a valid JSON object." };
+        }
+
+        const started = Date.now();
+        const result = await this.cache.get(
+            { url: settings.url, method: settings.method, headers, body: settings.body },
+            JsonFetcherAction.TEST_MAX_AGE_MS
+        );
+        const elapsed = Date.now() - started;
+
+        if (result.error) {
+            return { ok: false, error: result.error, elapsed, cached: result.fromCache };
+        }
+
+        try {
+            return {
+                ok: true,
+                value: this.buildDisplay(result.text || "", settings),
+                elapsed,
+                cached: result.fromCache,
+            };
+        } catch (err: any) {
+            streamDeck.logger.error(`Test failed for ${settings.url}: ${err?.stack || String(err)}`);
+            return { ok: false, error: err?.message || "Parse error", elapsed, cached: result.fromCache };
+        }
     }
 
     private intervalSeconds(settings: FetcherSettings): number {
@@ -110,9 +174,10 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         const themeColor = settings.themeColor || "cyan";
         const label = this.deriveLabel(settings);
         const icon = settings.icon || "none";
+        const fontSize = settings.fontSize || "md";
 
         if (!settings.url) {
-            await this.draw(ev, "Configure", label, false, "none", themeColor);
+            await this.draw(ev, "Configure", label, false, "none", themeColor, fontSize);
             return;
         }
 
@@ -123,25 +188,16 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
                 throw new Error("Invalid protocol");
             }
         } catch {
-            await this.draw(ev, "Invalid URL", label, true, icon, themeColor);
+            await this.draw(ev, "Invalid URL", label, true, icon, themeColor, fontSize);
             return;
         }
 
         let headers: Record<string, string> | undefined;
-        if (settings.headers && settings.headers.trim()) {
-            try {
-                const parsed = JSON.parse(settings.headers);
-                if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-                    throw new Error("not an object");
-                }
-                headers = {};
-                for (const [k, v] of Object.entries(parsed)) {
-                    headers[k] = String(v);
-                }
-            } catch {
-                await this.draw(ev, "Headers Error", label, true, icon, themeColor);
-                return;
-            }
+        try {
+            headers = this.parseHeaders(settings);
+        } catch {
+            await this.draw(ev, "Headers Error", label, true, icon, themeColor, fontSize);
+            return;
         }
 
         const result = await this.cache.get(
@@ -160,7 +216,8 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
             const display = this.buildDisplay(result.text || "", settings);
             this.values.set(ev.action.id, { value: display, isError: false });
         } catch (err: any) {
-            this.values.set(ev.action.id, { value: err?.message || "Parse error", isError: true });
+            streamDeck.logger.error(`Extraction failed for ${settings.url}: ${err?.stack || String(err)}`);
+            this.values.set(ev.action.id, { value: this.errorText(err), isError: true });
         }
         await this.paint(ev, settings);
     }
@@ -169,15 +226,37 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         const themeColor = settings.themeColor || "cyan";
         const label = this.deriveLabel(settings);
         const icon = settings.icon || "none";
+        const fontSize = settings.fontSize || "md";
         const cached = this.values.get(ev.action.id);
 
         if (!cached) {
             const value = settings.url ? "Loading" : "Configure";
-            await this.draw(ev, value, label, false, settings.url ? icon : "none", themeColor);
+            await this.draw(ev, value, label, false, settings.url ? icon : "none", themeColor, fontSize);
             return;
         }
 
-        await this.draw(ev, cached.value, label, cached.isError, icon, themeColor);
+        await this.draw(ev, cached.value, label, cached.isError, icon, themeColor, fontSize);
+    }
+
+    private parseHeaders(settings: FetcherSettings): Record<string, string> | undefined {
+        if (!settings.headers || !settings.headers.trim()) {
+            return undefined;
+        }
+        const parsed = JSON.parse(settings.headers);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("Headers must be a JSON object");
+        }
+        const headers: Record<string, string> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+            headers[k] = String(v);
+        }
+        return headers;
+    }
+
+    private errorText(err: any): string {
+        const raw = err?.message ? String(err.message) : "Parse error";
+        const oneLine = raw.replace(/\s+/g, " ").trim();
+        return oneLine.length > 40 ? `${oneLine.slice(0, 39)}\u2026` : oneLine;
     }
 
     private deriveLabel(settings: FetcherSettings): string {
@@ -185,9 +264,14 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
     }
 
     private buildDisplay(text: string, settings: FetcherSettings): string {
+        const formatter = settings.formatter || "none";
+
+        if (settings.mode === "js") {
+            return this.formatValue(this.scripts.run(settings.script || "", text), formatter);
+        }
+
         const isHtml = settings.mode === "html";
         const expr = (isHtml ? settings.selector : settings.jsonPath) || "";
-        const formatter = settings.formatter || "none";
 
         if (/\{[^}]*\}/.test(expr)) {
             const context = isHtml ? parse(text) : this.parseJson(text);
@@ -244,14 +328,14 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         return value === undefined || value === null ? null : value.trim();
     }
 
-    private async draw(ev: any, value: string, label: string, isError: boolean, icon: string, themeColor: string): Promise<void> {
+    private async draw(ev: any, value: string, label: string, isError: boolean, icon: string, themeColor: string, fontSize: string): Promise<void> {
         try {
-            const svg = this.renderer.render(value, label, isError, icon, themeColor, 144, 144);
+            const svg = this.renderer.render(value, label, isError, icon, themeColor, 144, 144, fontSize);
             const image = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
             await ev.action.setImage(image);
 
             if (this.controllers.get(ev.action.id) === "Encoder") {
-                const dialSvg = this.renderer.render(value, label, isError, icon, themeColor, 200, 100);
+                const dialSvg = this.renderer.render(value, label, isError, icon, themeColor, 200, 100, fontSize);
                 const feedbackImage = `data:image/svg+xml;base64,${Buffer.from(dialSvg).toString("base64")}`;
                 await (ev.action as any).setFeedback({ full_view: feedbackImage });
             }
@@ -271,10 +355,19 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         return current;
     }
 
+    /** DOM nodes from an HTML response are circular, so stringify defensively. */
+    private stringify(val: any): string {
+        try {
+            return JSON.stringify(val);
+        } catch {
+            return String(val);
+        }
+    }
+
     private formatValue(val: any, formatter: string): string {
         if (val === undefined || val === null) return "N/A";
 
-        let str = typeof val === "object" ? JSON.stringify(val) : String(val);
+        let str = typeof val === "object" ? this.stringify(val) : String(val);
         const num = parseFloat(str.replace(/[^0-9.-]/g, ""));
 
         switch (formatter) {
