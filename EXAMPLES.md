@@ -507,3 +507,112 @@ Use **Source Type: HTML** when there is no API. The plugin returns the first mat
 - Selector: `.price` (or `#price`, `[data-price]`) · Format: Currency USD · Icon: Dollar
 
 > HTML scraping is best-effort: if the site changes its markup, update the selector. Prefer a JSON API when one exists.
+
+---
+
+## 🧠 JS Mode (custom handlers)
+
+Use **Source Type: JS** when a path or a selector can't express what you need — ranking, counting, filtering, arithmetic across several fields.
+
+Write a function that takes `response` and returns what to show:
+
+- `response` is the **parsed JSON object** when the body is JSON;
+- otherwise it's the **HTML root**, with `querySelector()` / `querySelectorAll()`. Elements expose `.text`, `.getAttribute(name)`, `.innerHTML`.
+
+Label, icon, color and format stay on the **Display** tab. Handlers are synchronous, have no network access, and are aborted after 300 ms. `console.log` goes to the plugin log.
+
+**Your position in a leaderboard**
+```js
+function handler(response) {
+  const names = response.querySelectorAll('td.name').map(e => e.text.trim());
+  return names.indexOf('lenadweb') + 1;
+}
+```
+
+**Position in a JSON list**
+```js
+function handler(response) {
+  const index = response.results.findIndex(r => r.name === 'lenadweb');
+  return index + 1;
+}
+```
+
+**Count matching rows**
+```js
+function handler(response) {
+  return response.querySelectorAll('tr.incident.open').length;
+}
+```
+
+**Sum a column across a JSON array**
+```js
+function handler(response) {
+  return response.items.reduce((total, i) => total + i.amount, 0);
+}
+```
+
+**Filter, then count**
+```js
+function handler(response) {
+  return response.results.filter(r => r.status === 'failed').length;
+}
+```
+
+**Combine several fields**
+```js
+function handler(response) {
+  return `${response.used}/${response.total}`;
+}
+```
+
+**Percentage from two fields**
+```js
+function handler(response) {
+  return Math.round(100 * response.used / response.total) + '%';
+}
+```
+
+**The largest item's name**
+```js
+function handler(response) {
+  return response.items.sort((a, b) => b.value - a.value)[0].name;
+}
+```
+
+**Pull a number out of free text with a regex**
+```js
+function handler(response) {
+  const m = response.querySelector('.summary').text.match(/(\d+)\s+online/);
+  return m ? m[1] : 'N/A';
+}
+```
+
+**How many components are down**
+```js
+function handler(response) {
+  const down = response.components.filter(c => c.status !== 'operational').length;
+  return down ? down + ' down' : 'OK';
+}
+```
+
+**Time until a date**
+```js
+function handler(response) {
+  const days = Math.ceil((new Date(response.launch_date) - Date.now()) / 86400000);
+  return days + 'd';
+}
+```
+
+**Helpers alongside a named handler**
+```js
+function pct(a, b) {
+  return Math.round(100 * a / b) + '%';
+}
+
+function handler(response) {
+  return pct(response.used, response.total);
+}
+```
+
+> An arrow works too when it's a one-liner: `response => response.items.length`.
+> Set **Format: As Is** when the handler already returns a formatted string — otherwise the chosen formatter runs on top of it.
