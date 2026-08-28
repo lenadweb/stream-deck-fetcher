@@ -517,22 +517,33 @@ Use **Source Type: JS** when a path or a selector can't express what you need â€
 Write a function that takes `response` and returns what to show:
 
 - `response` is the **parsed JSON object** when the body is JSON;
-- otherwise it's the **HTML root**, with `querySelector()` / `querySelectorAll()`. Elements expose `.text`, `.getAttribute(name)`, `.innerHTML`.
+- otherwise it's the **HTML root**, with `querySelector()` / `querySelectorAll()`. Elements expose `.text`, `.textContent`, `.getAttribute(name)`, `.innerHTML`.
+
+For HTML, `querySelector()`, `querySelectorAll()` and `document` also work as bare globals, and `querySelectorAll()` returns a plain array. Mind that element text keeps the surrounding whitespace from the markup â€” `.trim()` before comparing.
 
 Label, icon, color and format stay on the **Display** tab. Handlers are synchronous, have no network access, and are aborted after 300 ms. `console.log` goes to the plugin log.
 
 **Your position in a leaderboard**
 ```js
 function handler(response) {
-  const names = response.querySelectorAll('td.name').map(e => e.text.trim());
-  return names.indexOf('lenadweb') + 1;
+  const names = querySelectorAll('td.name').map(e => e.text.trim());
+  return names.indexOf('nightowl') + 1;
+}
+```
+
+**Position of an item matching its exact title**
+```js
+function handler(response) {
+  const index = querySelectorAll('.listing .listing-title')
+    .findIndex(el => el.textContent.trim() === 'Deep Work Timer');
+  return index + 1;
 }
 ```
 
 **Position in a JSON list**
 ```js
 function handler(response) {
-  const index = response.results.findIndex(r => r.name === 'lenadweb');
+  const index = response.results.findIndex(r => r.name === 'nightowl');
   return index + 1;
 }
 ```

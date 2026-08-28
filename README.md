@@ -56,11 +56,13 @@ When a path or a selector isn't enough, switch **Source Type** to `JS` and write
 // "what place am I in?" — the rank of a name among its neighbours
 function handler(response) {
   const names = response.querySelectorAll('td.name').map(e => e.text.trim());
-  return names.indexOf('lenadweb') + 1;
+  return names.indexOf('nightowl') + 1;
 }
 ```
 
-- `response` is the **parsed JSON object** when the response body is JSON, and the **HTML root** otherwise — with `querySelector()`, `querySelectorAll()`, `.text` and `.getAttribute()`.
+- `response` is the **parsed JSON object** when the response body is JSON, and the **HTML root** otherwise — with `querySelector()`, `querySelectorAll()`, `.text`, `.textContent` and `.getAttribute()`.
+- For HTML, `querySelector()`, `querySelectorAll()` and `document` are also available as bare globals, so browser-console habits carry over. `querySelectorAll()` returns a plain array — no `Array.from()` needed.
+- `.textContent` keeps the whitespace around it in the markup; use `.text.trim()` or `.textContent.trim()` when comparing strings.
 - Return the value to display. Label, icon and color stay under your control on the **Display** tab.
 - Any function shape works: a named `function handler(response)`, an anonymous `function (response)`, or an arrow `response => …`. Define helpers alongside a named `handler` if you need them.
 - The chosen **Format** is applied to the returned value; use `As Is` when the handler already formats it.
