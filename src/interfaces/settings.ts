@@ -13,5 +13,6 @@ export interface FetcherSettings {
     formatter?: string;
     headers?: string;
     pulling?: number;
+    forceRefreshOnAppear?: boolean;
     [key: string]: any;
 }

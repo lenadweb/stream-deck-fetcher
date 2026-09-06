@@ -121,6 +121,9 @@ const fontScales: Record<string, number> = {
     xl: 1.45
 };
 
+/** Loading indicator: a blue dot in the top-right corner while a fetch is in flight. */
+const LOADING_DOT_COLOR = "#3b82f6";
+
 export class ProgressBarRenderer {
     render(
         value: string,
@@ -130,14 +133,24 @@ export class ProgressBarRenderer {
         themeColor: string,
         width: number,
         height: number,
-        fontSize = "md"
+        fontSize = "md",
+        isLoading = false
     ): string {
         const isDial = width === 200 && height === 100;
         const scale = fontScales[fontSize] || 1;
         const body = isDial
             ? this.renderDial(value, label, isError, icon, themeColor, scale)
             : this.renderKey(value, label, isError, icon, themeColor, scale);
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}</svg>`;
+        const dot = isLoading ? this.loadingDot(width) : "";
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}${dot}</svg>`;
+    }
+
+    /** Drawn last so it sits above the value, and inset far enough to survive the key's rounded corners. */
+    private loadingDot(width: number): string {
+        const cx = width - 18;
+        const cy = 18;
+        return `<circle cx="${cx}" cy="${cy}" r="9" fill="${LOADING_DOT_COLOR}" opacity="0.28" />`
+            + `<circle cx="${cx}" cy="${cy}" r="5" fill="${LOADING_DOT_COLOR}" />`;
     }
 
     private renderKey(value: string, label: string, isError: boolean, icon: string, themeColor: string, scale: number): string {

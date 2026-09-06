@@ -25,11 +25,14 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
     private static readonly MANUAL_RATE_MS = 2000;
     /** Tests reuse a recent response so repeated presses iterate on the handler, not the endpoint. */
     private static readonly TEST_MAX_AGE_MS = 30000;
+    /** A cache hit resolves in about a millisecond; waiting this long keeps the dot off those refreshes. */
+    private static readonly LOADING_DOT_DELAY_MS = 150;
 
     private readonly intervals = new Map<string, NodeJS.Timeout>();
     private readonly controllers = new Map<string, string>();
     private readonly values = new Map<string, CachedValue>();
     private readonly lastManualFetch = new Map<string, number>();
+    private readonly pending = new Set<string>();
     private readonly renderer = new ProgressBarRenderer();
     private readonly cache = new FetchCache();
     private readonly scripts = new ScriptRunner((level, args) => {
@@ -39,13 +42,15 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
 
     override async onWillAppear(ev: WillAppearEvent<FetcherSettings>): Promise<void> {
         this.controllers.set(ev.action.id, ev.payload.controller);
-        await this.paint(ev, (ev.payload?.settings ?? {}) as FetcherSettings);
-        this.startMonitoring(ev);
+        const settings = (ev.payload?.settings ?? {}) as FetcherSettings;
+        await this.paint(ev, settings);
+        this.startMonitoring(ev, settings.forceRefreshOnAppear === true);
     }
 
     override onWillDisappear(ev: WillDisappearEvent<FetcherSettings>): void {
         this.controllers.delete(ev.action.id);
         this.lastManualFetch.delete(ev.action.id);
+        this.pending.delete(ev.action.id);
         this.stopMonitoring(ev.action.id);
     }
 
@@ -133,7 +138,10 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         return Math.max(JsonFetcherAction.MIN_INTERVAL_S, Math.floor(raw));
     }
 
-    private startMonitoring(ev: WillAppearEvent<FetcherSettings> | DidReceiveSettingsEvent<FetcherSettings>): void {
+    private startMonitoring(
+        ev: WillAppearEvent<FetcherSettings> | DidReceiveSettingsEvent<FetcherSettings>,
+        forceFirstRefresh = false
+    ): void {
         const id = ev.action.id;
         this.stopMonitoring(id);
 
@@ -141,7 +149,8 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         const intervalMs = this.intervalSeconds(settings) * 1000;
         const maxAgeMs = Math.max(0, intervalMs - 1000);
 
-        void this.refresh(ev, maxAgeMs);
+        // A forced refresh skips the cache entirely so the tile shows a fresh value the moment it appears.
+        void this.refresh(ev, forceFirstRefresh ? 0 : maxAgeMs);
 
         const timer = setInterval(() => {
             void this.refresh(ev, maxAgeMs);
@@ -200,9 +209,8 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
             return;
         }
 
-        const result = await this.cache.get(
-            { url: settings.url, method: settings.method, headers, body: settings.body },
-            maxAgeMs
+        const result = await this.whilePending(ev, settings, () =>
+            this.cache.get({ url: settings.url!, method: settings.method, headers, body: settings.body }, maxAgeMs)
         );
 
         if (result.error) {
@@ -222,20 +230,37 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         await this.paint(ev, settings);
     }
 
+    /** Marks the action as loading and repaints, so a slow fetch shows the indicator dot. */
+    private async whilePending<T>(ev: any, settings: FetcherSettings, work: () => Promise<T>): Promise<T> {
+        const id = ev.action.id;
+        const promise = work();
+        const timer = setTimeout(() => {
+            this.pending.add(id);
+            void this.paint(ev, settings);
+        }, JsonFetcherAction.LOADING_DOT_DELAY_MS);
+        try {
+            return await promise;
+        } finally {
+            clearTimeout(timer);
+            this.pending.delete(id);
+        }
+    }
+
     private async paint(ev: any, settings: FetcherSettings): Promise<void> {
         const themeColor = settings.themeColor || "cyan";
         const label = this.deriveLabel(settings);
         const icon = settings.icon || "none";
         const fontSize = settings.fontSize || "md";
         const cached = this.values.get(ev.action.id);
+        const isLoading = this.pending.has(ev.action.id);
 
         if (!cached) {
             const value = settings.url ? "Loading" : "Configure";
-            await this.draw(ev, value, label, false, settings.url ? icon : "none", themeColor, fontSize);
+            await this.draw(ev, value, label, false, settings.url ? icon : "none", themeColor, fontSize, isLoading);
             return;
         }
 
-        await this.draw(ev, cached.value, label, cached.isError, icon, themeColor, fontSize);
+        await this.draw(ev, cached.value, label, cached.isError, icon, themeColor, fontSize, isLoading);
     }
 
     private parseHeaders(settings: FetcherSettings): Record<string, string> | undefined {
@@ -328,14 +353,14 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         return value === undefined || value === null ? null : value.trim();
     }
 
-    private async draw(ev: any, value: string, label: string, isError: boolean, icon: string, themeColor: string, fontSize: string): Promise<void> {
+    private async draw(ev: any, value: string, label: string, isError: boolean, icon: string, themeColor: string, fontSize: string, isLoading = false): Promise<void> {
         try {
-            const svg = this.renderer.render(value, label, isError, icon, themeColor, 144, 144, fontSize);
+            const svg = this.renderer.render(value, label, isError, icon, themeColor, 144, 144, fontSize, isLoading);
             const image = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
             await ev.action.setImage(image);
 
             if (this.controllers.get(ev.action.id) === "Encoder") {
-                const dialSvg = this.renderer.render(value, label, isError, icon, themeColor, 200, 100, fontSize);
+                const dialSvg = this.renderer.render(value, label, isError, icon, themeColor, 200, 100, fontSize, isLoading);
                 const feedbackImage = `data:image/svg+xml;base64,${Buffer.from(dialSvg).toString("base64")}`;
                 await (ev.action as any).setFeedback({ full_view: feedbackImage });
             }

@@ -214,6 +214,29 @@
         .chip:hover { color: var(--text); border-color: var(--accent); }
         .chip.active { background: var(--accent); color: #06222a; border-color: var(--accent); }
 
+        /* Checkbox row */
+        .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .check input {
+            width: 15px;
+            height: 15px;
+            flex: none;
+            margin: 0;
+            padding: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--panel-input);
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
+        }
+        .check input:hover { border-color: var(--accent); }
+        .check input:checked {
+            background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2306222a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center no-repeat;
+            border-color: var(--accent);
+        }
+        .check span { color: var(--text); font-size: 12px; font-weight: 600; }
+
         /* Test button + result */
         .btn {
             width: 100%;
@@ -454,6 +477,14 @@
                 </div>
                 <div class="hint" id="interval-hint">Minimum 5 seconds.</div>
             </div>
+
+            <div class="field">
+                <label class="check" for="forceRefreshOnAppear">
+                    <input id="forceRefreshOnAppear" type="checkbox" />
+                    <span>Force refresh on appear</span>
+                </label>
+                <div class="hint">Fetches again every time the key becomes visible — switching to its page or profile, waking the device, or restarting Stream Deck — ignoring any cached response. Leave off to reuse the last response while it is still within the refresh interval.</div>
+            </div>
         </div>
 
         <div class="footer">
@@ -606,6 +637,7 @@
             $("body").value = settings.body || "";
             $("method").value = settings.method || "GET";
             $("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
+            $("forceRefreshOnAppear").checked = settings.forceRefreshOnAppear === true;
             $("formatter").value = settings.formatter || "none";
             $("icon").value = settings.icon || "none";
             $("fontSize").value = settings.fontSize || "md";
@@ -717,6 +749,7 @@
 
             const pullingVal = parseInt($("pulling").value, 10);
             settings.pulling = !isNaN(pullingVal) ? pullingVal : 43200;
+            settings.forceRefreshOnAppear = $("forceRefreshOnAppear").checked;
 
             settings.themeColor = currentTheme;
             settings.formatter = $("formatter").value;
@@ -813,7 +846,7 @@
             $("pulling").addEventListener("input", updateIntervalHint);
             $("method").addEventListener("change", function () { updateBodyVisibility(); saveSettings(); });
 
-            ["url", "jsonPath", "selector", "script", "label", "headers", "body", "pulling", "formatter", "icon", "fontSize"].forEach(function (id) {
+            ["url", "jsonPath", "selector", "script", "label", "headers", "body", "pulling", "forceRefreshOnAppear", "formatter", "icon", "fontSize"].forEach(function (id) {
                 $(id).addEventListener("change", saveSettings);
             });
 
