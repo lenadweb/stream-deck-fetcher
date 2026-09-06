@@ -1,6 +1,6 @@
 {
   "name": "stream-deck-fetcher",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Generic Stream Deck plugin to fetch JSON and extract a value via JSON path.",
   "type": "module",
   "scripts": {
