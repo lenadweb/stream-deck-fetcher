@@ -109,7 +109,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
 
         const started = Date.now();
         const result = await this.cache.get(
-            { url: settings.url, method: settings.method, headers, body: settings.body },
+            { url: settings.url, method: settings.method, headers, body: settings.body, insecure: settings.ignoreCertErrors === true },
             JsonFetcherAction.TEST_MAX_AGE_MS
         );
         const elapsed = Date.now() - started;
@@ -210,7 +210,7 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         }
 
         const result = await this.whilePending(ev, settings, () =>
-            this.cache.get({ url: settings.url!, method: settings.method, headers, body: settings.body }, maxAgeMs)
+            this.cache.get({ url: settings.url!, method: settings.method, headers, body: settings.body, insecure: settings.ignoreCertErrors === true }, maxAgeMs)
         );
 
         if (result.error) {

@@ -14,5 +14,6 @@ export interface FetcherSettings {
     headers?: string;
     pulling?: number;
     forceRefreshOnAppear?: boolean;
+    ignoreCertErrors?: boolean;
     [key: string]: any;
 }

@@ -485,6 +485,14 @@
                 </label>
                 <div class="hint">Fetches again every time the key becomes visible — switching to its page or profile, waking the device, or restarting Stream Deck — ignoring any cached response. Leave off to reuse the last response while it is still within the refresh interval.</div>
             </div>
+
+            <div class="field">
+                <label class="check" for="ignoreCertErrors">
+                    <input id="ignoreCertErrors" type="checkbox" />
+                    <span>Ignore certificate errors</span>
+                </label>
+                <div class="hint">Accepts self-signed, expired or mismatched HTTPS certificates for this key. Only enable for servers you trust.</div>
+            </div>
         </div>
 
         <div class="footer">
@@ -638,6 +646,7 @@
             $("method").value = settings.method || "GET";
             $("pulling").value = settings.pulling !== undefined ? settings.pulling : 43200;
             $("forceRefreshOnAppear").checked = settings.forceRefreshOnAppear === true;
+            $("ignoreCertErrors").checked = settings.ignoreCertErrors === true;
             $("formatter").value = settings.formatter || "none";
             $("icon").value = settings.icon || "none";
             $("fontSize").value = settings.fontSize || "md";
@@ -750,6 +759,7 @@
             const pullingVal = parseInt($("pulling").value, 10);
             settings.pulling = !isNaN(pullingVal) ? pullingVal : 43200;
             settings.forceRefreshOnAppear = $("forceRefreshOnAppear").checked;
+            settings.ignoreCertErrors = $("ignoreCertErrors").checked;
 
             settings.themeColor = currentTheme;
             settings.formatter = $("formatter").value;
@@ -779,6 +789,7 @@
                 headers: $("headers").value.trim(),
                 formatter: $("formatter").value,
                 pulling: !isNaN(pullingVal) ? pullingVal : 43200,
+                ignoreCertErrors: $("ignoreCertErrors").checked,
             };
         }
 
@@ -846,7 +857,7 @@
             $("pulling").addEventListener("input", updateIntervalHint);
             $("method").addEventListener("change", function () { updateBodyVisibility(); saveSettings(); });
 
-            ["url", "jsonPath", "selector", "script", "label", "headers", "body", "pulling", "forceRefreshOnAppear", "formatter", "icon", "fontSize"].forEach(function (id) {
+            ["url", "jsonPath", "selector", "script", "label", "headers", "body", "pulling", "forceRefreshOnAppear", "ignoreCertErrors", "formatter", "icon", "fontSize"].forEach(function (id) {
                 $(id).addEventListener("change", saveSettings);
             });
 
