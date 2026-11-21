@@ -35,6 +35,7 @@
   "dependencies": {
     "@elgato/streamdeck": "^2.0.0",
     "lucide": "^1.18.0",
-    "node-html-parser": "^7.1.0"
+    "node-html-parser": "^7.1.0",
+    "undici": "^6.29.1"
   }
 }

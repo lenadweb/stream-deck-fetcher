@@ -48,6 +48,7 @@ The Property Inspector is organised into three tabs:
 | **Headers** | Optional JSON object of request headers, e.g. `{"Authorization": "Bearer token"}`. |
 | **Refresh Interval** | Polling interval in seconds (minimum 5, default 43200 = 12 hours). |
 | **Force refresh on appear** | Off by default. When on, the key refetches every time it becomes visible — switching to its page or profile, waking the device, restarting Stream Deck — ignoring any cached response. Leave it off to reuse the last response while it is still within the refresh interval. |
+| **Ignore certificate errors** | Off by default. Accepts self-signed, expired or mismatched HTTPS certificates for this key. Only enable it for servers you trust, such as devices on your local network. |
 
 ## JS handlers
 

@@ -1,15 +1,17 @@
-import http from "node:http";
-import https from "node:https";
-import zlib from "node:zlib";
-import type { Readable } from "node:stream";
+import { Agent, fetch as undiciFetch } from "undici";
 
 const TIMEOUT_MS = 8000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 200;
-const MAX_REDIRECTS = 5;
+const CERT_ERROR_CODE = /CERT|SELF_SIGNED|UNABLE_TO_VERIFY/;
 
-// Used only when a key has "Ignore certificate errors" enabled.
-const insecureAgent = new https.Agent({ rejectUnauthorized: false, keepAlive: true });
+export const CERT_ERROR = "Certificate error";
+
+// Used only by keys with "Ignore certificate errors" enabled; regular requests keep the global fetch.
+let insecureAgent: Agent | undefined;
+function getInsecureAgent(): Agent {
+    return (insecureAgent ??= new Agent({ connect: { rejectUnauthorized: false } }));
+}
 
 export interface FetchRequest {
     url: string;
@@ -30,97 +32,6 @@ interface CacheEntry {
     text?: string;
     error?: string;
     inflight?: Promise<FetchResult>;
-}
-
-interface RawResponse {
-    status: number;
-    text: string;
-}
-
-const TOO_LARGE = "TOO_LARGE";
-
-function rawRequest(
-    url: URL,
-    method: string,
-    headers: Record<string, string>,
-    body: string | undefined,
-    signal: AbortSignal,
-    insecure: boolean,
-    redirectsLeft: number = MAX_REDIRECTS,
-): Promise<RawResponse> {
-    return new Promise((resolve, reject) => {
-        const isHttps = url.protocol === "https:";
-        const lib = isHttps ? https : http;
-
-        const h: Record<string, string> = { "accept-encoding": "gzip, deflate, br" };
-        for (const [k, v] of Object.entries(headers)) h[k.toLowerCase()] = v;
-        if (body !== undefined) h["content-length"] = String(Buffer.byteLength(body));
-
-        const req = lib.request(
-            url,
-            { method, headers: h, agent: isHttps && insecure ? insecureAgent : undefined, signal },
-            (res) => {
-                const status = res.statusCode ?? 0;
-                const location = res.headers.location;
-
-                // Follow redirects (301 / 302 / 303 -> GET without body; 307 / 308 preserve)
-                if (status >= 300 && status < 400 && location) {
-                    res.resume();
-                    if (redirectsLeft <= 0) return reject(new Error("Too many redirects"));
-                    const next = new URL(location, url);
-                    const keep = status === 307 || status === 308;
-                    const nextHeaders = { ...headers };
-                    if (!keep) {
-                        for (const k of Object.keys(nextHeaders)) {
-                            if (k.toLowerCase() === "content-type") delete nextHeaders[k];
-                        }
-                    }
-                    return resolve(
-                        rawRequest(
-                            next,
-                            keep ? method : "GET",
-                            nextHeaders,
-                            keep ? body : undefined,
-                            signal,
-                            insecure,
-                            redirectsLeft - 1,
-                        ),
-                    );
-                }
-
-                const len = Number(res.headers["content-length"]);
-                if (Number.isFinite(len) && len > MAX_RESPONSE_BYTES) {
-                    req.destroy();
-                    return reject(new Error(TOO_LARGE));
-                }
-
-                res.on("error", reject);
-                let stream: Readable = res;
-                const enc = String(res.headers["content-encoding"] || "").toLowerCase();
-                if (enc === "gzip" || enc === "x-gzip") stream = res.pipe(zlib.createGunzip());
-                else if (enc === "deflate") stream = res.pipe(zlib.createInflate());
-                else if (enc === "br") stream = res.pipe(zlib.createBrotliDecompress());
-
-                const chunks: Buffer[] = [];
-                let size = 0;
-                stream.on("data", (c: Buffer) => {
-                    size += c.length;
-                    if (size > MAX_RESPONSE_BYTES) {
-                        req.destroy();
-                        reject(new Error(TOO_LARGE));
-                        return;
-                    }
-                    chunks.push(c);
-                });
-                stream.on("end", () => resolve({ status, text: Buffer.concat(chunks).toString("utf8") }));
-                stream.on("error", reject);
-            },
-        );
-
-        req.on("error", reject);
-        if (body !== undefined) req.write(body);
-        req.end();
-    });
 }
 
 export class FetchCache {
@@ -166,33 +77,43 @@ export class FetchCache {
         try {
             const method = (req.method || "GET").toUpperCase();
             const headers: Record<string, string> = { ...(req.headers || {}) };
+            const init: RequestInit = { signal: controller.signal, redirect: "follow", method };
 
             const hasBody = req.body != null && req.body !== "" && method !== "GET" && method !== "HEAD";
             if (hasBody) {
+                init.body = req.body;
                 const hasContentType = Object.keys(headers).some((k) => k.toLowerCase() === "content-type");
                 if (!hasContentType) {
                     headers["Content-Type"] = "application/json";
                 }
             }
+            if (Object.keys(headers).length > 0) {
+                init.headers = headers;
+            }
 
-            const res = await rawRequest(
-                new URL(req.url),
-                method,
-                headers,
-                hasBody ? req.body : undefined,
-                controller.signal,
-                req.insecure === true,
-            );
-
-            if (res.status < 200 || res.status >= 300) {
+            const res = req.insecure
+                ? await undiciFetch(req.url, { ...init, dispatcher: getInsecureAgent() } as Parameters<typeof undiciFetch>[1])
+                : await fetch(req.url, init);
+            if (!res.ok) {
                 return { error: `HTTP ${res.status}`, fromCache: false };
             }
-            return { text: res.text, fromCache: false };
+
+            const contentLength = Number(res.headers.get("content-length"));
+            if (Number.isFinite(contentLength) && contentLength > MAX_RESPONSE_BYTES) {
+                return { error: "Response too large", fromCache: false };
+            }
+
+            const text = await res.text();
+            if (text.length > MAX_RESPONSE_BYTES) {
+                return { error: "Response too large", fromCache: false };
+            }
+
+            return { text, fromCache: false };
         } catch (err: unknown) {
-            const e = err as { name?: string; message?: string };
+            const e = err as { name?: string; cause?: { code?: string } };
             let error = "Network error";
-            if (e?.name === "AbortError" || e?.name === "TimeoutError") error = "Timeout";
-            else if (e?.message === TOO_LARGE) error = "Response too large";
+            if (e?.name === "AbortError") error = "Timeout";
+            else if (CERT_ERROR_CODE.test(String(e?.cause?.code ?? ""))) error = CERT_ERROR;
             return { error, fromCache: false };
         } finally {
             clearTimeout(timeoutId);

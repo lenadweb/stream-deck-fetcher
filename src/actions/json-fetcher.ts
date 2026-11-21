@@ -10,7 +10,7 @@ import streamDeck, {
 import { parse } from "node-html-parser";
 import { FetcherSettings } from "../interfaces/settings";
 import { ProgressBarRenderer } from "../ui/progress-bar-renderer";
-import { FetchCache } from "../services/fetch-cache";
+import { CERT_ERROR, FetchCache } from "../services/fetch-cache";
 import { ScriptRunner } from "../services/script-runner";
 
 interface CachedValue {
@@ -115,7 +115,10 @@ export class JsonFetcherAction extends SingletonAction<FetcherSettings> {
         const elapsed = Date.now() - started;
 
         if (result.error) {
-            return { ok: false, error: result.error, elapsed, cached: result.fromCache };
+            const error = result.error === CERT_ERROR && !settings.ignoreCertErrors
+                ? `${CERT_ERROR}. Enable "Ignore certificate errors" if you trust this server.`
+                : result.error;
+            return { ok: false, error, elapsed, cached: result.fromCache };
         }
 
         try {
